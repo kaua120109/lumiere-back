@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model usuario {
+  usuarioid Int        @id @default(autoincrement())
+  usuario   String
+  nome      String
+  cpf       String
+  email     String?
+  celular   String?
+  senha     String
+  endereco  endereco[] // Relacionamento 1:N com Endereco (um usuário pode ter vários endereços)
+  ordens    ordem[] // Relacionamento 1:N com Ordem (um usuário pode ter várias ordens)
+  createdAt DateTime   @default(now())
+}
+
+model endereco {
+  enderecoid  BigInt   @id
+  usuarioid   Int
+  usuario     usuario  @relation(fields: [usuarioid], references: [usuarioid]) // Relacionamento N:1 com Usuario
+  cidade      String
+  bairro      String
+  rua         String
+  numero      String
+  complemento String
+  estado      String
+  cep         String
+  createdAt   DateTime
+  ordem       ordem[]
+}
+
+model produto {
+  produtoid    BigInt         @id @default(autoincrement())
+  nome         String
+  descricao    String
+  preco        Float
+  estoque      Int
+  categoriaid  BigInt
+  categoria    categoria      @relation(fields: [categoriaid], references: [categoriaid])
+  imagem       String[]       @db.Text
+  createdAt    DateTime       @default(now())
+  ordemProduto ordemProduto[]
+}
+
+model categoria {
+  categoriaid BigInt    @id
+  nome        String
+  produtos    produto[] // Relacionamento 1:N com Produto (uma categoria tem vários produtos)
+  imagem      String
+}
+
+model ordem {
+  ordemid    BigInt         @id
+  usuarioid  Int
+  usuario    usuario        @relation(fields: [usuarioid], references: [usuarioid]) // Relacionamento N:1 com Usuario
+  enderecoid BigInt
+  endereco   endereco       @relation(fields: [enderecoid], references: [enderecoid]) // Relacionamento N:1 com Endereco
+  totalPreco String
+  desconto   String
+  frete      String
+  precoFinal String
+  status     String
+  createdAt  DateTime
+  updateAt   DateTime
+  produtos   ordemProduto[] // Relacionamento 1:N com OrdemProduto (uma ordem tem vários produtos)
+  pagamento  pagamento? // Relacionamento 1:1 com Pagamento
+}
+
+model ordemProduto {
+  produtoid     BigInt   @id
+  ordemid       BigInt
+  ordem         ordem    @relation(fields: [ordemid], references: [ordemid]) // Relacionamento N:1 com Ordem
+  produtoId     BigInt
+  produto       produto  @relation(fields: [produtoId], references: [produtoid]) // Relacionamento N:1 com Produto
+  quantidade    Int
+  precoUnitario String
+  subtotal      String
+  createdAt     DateTime
+}
+
+model pagamento {
+  pagamentoid BigInt   @id
+  ordemId     BigInt   @unique
+  ordem       ordem    @relation(fields: [ordemId], references: [ordemid]) // Relacionamento N:1 com Ordem
+  status      Int
+  metodo      String
+  transacao   String
+  createdAt   DateTime
+}
