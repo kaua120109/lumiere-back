@@ -27,7 +27,7 @@ model usuario {
 }
 
 model endereco {
-  enderecoid  BigInt   @id
+  enderecoid  BigInt   @id @default(autoincrement())
   usuarioid   Int
   usuario     usuario  @relation(fields: [usuarioid], references: [usuarioid]) // Relacionamento N:1 com Usuario
   cidade      String
@@ -55,14 +55,14 @@ model produto {
 }
 
 model categoria {
-  categoriaid BigInt    @id
+  categoriaid BigInt    @id @default(autoincrement())
   nome        String
   produtos    produto[] // Relacionamento 1:N com Produto (uma categoria tem vários produtos)
   imagem      String
 }
 
 model ordem {
-  ordemid    BigInt         @id
+  ordemid    BigInt         @id @default(autoincrement())
   usuarioid  Int
   usuario    usuario        @relation(fields: [usuarioid], references: [usuarioid]) // Relacionamento N:1 com Usuario
   enderecoid BigInt
@@ -79,7 +79,7 @@ model ordem {
 }
 
 model ordemProduto {
-  produtoid     BigInt   @id
+  produtoid     BigInt   @id @default(autoincrement())
   ordemid       BigInt
   ordem         ordem    @relation(fields: [ordemid], references: [ordemid]) // Relacionamento N:1 com Ordem
   produtoId     BigInt
@@ -91,7 +91,7 @@ model ordemProduto {
 }
 
 model pagamento {
-  pagamentoid BigInt   @id
+  pagamentoid BigInt   @id @default(autoincrement())
   ordemId     BigInt   @unique
   ordem       ordem    @relation(fields: [ordemId], references: [ordemid]) // Relacionamento N:1 com Ordem
   status      Int

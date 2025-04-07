@@ -14,6 +14,7 @@ router.post("/lista-categorias", async (req, res) => {
 });
 
 router.post("/adicionar", async (req, res) => {
+  console.log("Dados recebidos para criação:", req.body);
   try {
     const novaCategoria = await categoria.criarCategoria(req.body);
     res.status(201).json(novaCategoria);

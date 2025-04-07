@@ -14,6 +14,7 @@ export const categoria = {
   },
 
   async criarCategoria(dados) {
+    console.log("bunda", dados);
     return await prisma.categoria.create({
       data: {
         nome: dados.nome,
