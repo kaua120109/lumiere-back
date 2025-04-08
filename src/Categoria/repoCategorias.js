@@ -21,5 +21,23 @@ export const categoria = {
         imagem: dados.imagem || ""
       }
     });
+  },
+
+  async atualizarCategoria(categoria, dados) {
+    return await prisma.categoria.update({
+      where: { categoriaid: parseInt(categoria) },
+      data: {
+        nome: dados.nome,
+        imagem: dados.imagem || ""
+      }
+    });
+  },
+
+  async deletarCategoria(id) {
+    return await prisma.categoria.delete({
+      where: { categoriaid: BigInt(id) }
+    });
   }
-};
+};  
+
+export default categoria;  

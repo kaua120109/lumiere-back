@@ -18,36 +18,44 @@ export const produto = {
   },
 
   async criarProduto(dados) {
+    console.log("Dados recebidos no repositório:", dados);
     return await prisma.produto.create({
       data: {
         nome: dados.nome,
         descricao: dados.descricao,
-        preco: parseFloat(dados.preco),
-        estoque: parseInt(dados.estoque),
+        preco: parseFloat(dados.preco),      // ✅ conversão correta
+        estoque: parseInt(dados.estoque),    // ✅ conversão correta
+        imagem: dados.imagem || "",          // ✅ trata imagem opcional
         categoria: {
-          connect: { categoriaid: dados.categoriaid }
+          connect: {
+            categoriaid: parseInt(dados.categoriaid)
+          }
         }
-        
-      },
+      }
     });
   },
-  
-  async atualizarProduto(produtoid, dados) {
+
+  async atualizarProduto(id, dados) {
     return await prisma.produto.update({
-      where: { produtoid: parseInt(produtoid) },
+      where: {
+        produtoid: parseInt(id)
+      },
       data: {
         nome: dados.nome,
         descricao: dados.descricao,
         preco: parseFloat(dados.preco),
         estoque: parseInt(dados.estoque),
-        categoriaid: dados.categoriaid ? parseInt(dados.categoriaid) : undefined
+        imagem: dados.imagem || [], // trata imagem opcional
+        categoriaid: parseInt(dados.categoriaid)
       }
     });
   },
 
   async deletarProduto(produtoid) {
     return await prisma.produto.delete({
-      where: { produtoid: parseInt(produtoid) }
+      where: {
+        produtoid: parseInt(produtoid.id)
+      }
     });
-  },
+  }
 };
