@@ -25,7 +25,7 @@ export const produto = {
         descricao: dados.descricao,
         preco: parseFloat(dados.preco),      // ✅ conversão correta
         estoque: parseInt(dados.estoque),    // ✅ conversão correta
-        imagem: dados.imagem || "",          // ✅ trata imagem opcional
+        imagem: dados.imagem || [],         // ✅ trata imagem opcional
         categoria: {
           connect: {
             categoriaid: parseInt(dados.categoriaid)
@@ -45,8 +45,12 @@ export const produto = {
         descricao: dados.descricao,
         preco: parseFloat(dados.preco),
         estoque: parseInt(dados.estoque),
-        imagem: dados.imagem || [], // trata imagem opcional
-        categoriaid: parseInt(dados.categoriaid)
+        imagem: dados.imagem ? [dados.imagem] : [],
+        categoria: {
+          connect: {
+            categoriaid: parseInt(dados.categoriaid)
+          }
+        }
       }
     });
   },

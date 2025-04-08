@@ -18,7 +18,7 @@ export const categoria = {
     return await prisma.categoria.create({
       data: {
         nome: dados.nome,
-        imagem: dados.imagem || ""
+        imagem: dados.imagem || null
       }
     });
   },
@@ -28,7 +28,7 @@ export const categoria = {
       where: { categoriaid: parseInt(categoria) },
       data: {
         nome: dados.nome,
-        imagem: dados.imagem || ""
+        imagem: dados.imagem || null
       }
     });
   },
