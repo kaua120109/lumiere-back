@@ -23,9 +23,9 @@ export const produto = {
       data: {
         nome: dados.nome,
         descricao: dados.descricao,
-        preco: parseFloat(dados.preco),      // ✅ conversão correta
+        preco: parseFloat(dados.preco),       // ✅ conversão correta
         estoque: parseInt(dados.estoque),    // ✅ conversão correta
-        imagem: dados.imagem || [],         // ✅ trata imagem opcional
+        imagem: dados.imagem ?? null,       // ✅ trata imagem opcional
         categoria: {
           connect: {
             categoriaid: parseInt(dados.categoriaid)
@@ -45,7 +45,7 @@ export const produto = {
         descricao: dados.descricao,
         preco: parseFloat(dados.preco),
         estoque: parseInt(dados.estoque),
-        imagem: dados.imagem ? [dados.imagem] : [],
+        imagem: dados.imagem ?? null,
         categoria: {
           connect: {
             categoriaid: parseInt(dados.categoriaid)
@@ -54,7 +54,7 @@ export const produto = {
       }
     });
   },
-
+  
   async deletarProduto(produtoid) {
     return await prisma.produto.delete({
       where: {
