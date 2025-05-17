@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { usuario } from "./repoUsuarios.js";
+import { cadastrarMembro } from './membro.js';
+import { verificarAutenticacao, verificarAdmin } from '../middleware/auth.js';
+
 
 const router = Router();
+router.post('/cadastroMembro', cadastrarMembro);
 
 router.post("/cadastro", async (req, res) => {
   try {
@@ -13,7 +17,6 @@ router.post("/cadastro", async (req, res) => {
   }
 });
 
-// rotasUsuario.js
 router.post("/login", async (req, res) => {
   try {
     const result = await usuario.login(req.body);
@@ -30,4 +33,28 @@ router.post("/login", async (req, res) => {
   }
 });
 
-export default router; 
+router.get("/verificar-admin", verificarAutenticacao, async (req, res) => {
+  try {
+    res.status(200).json({
+      admin: req.usuario.admin,
+      usuarioid: req.usuario.usuarioid,
+      nome: req.usuario.nome
+    });
+  } catch (error) {
+    console.error("Erro ao verificar admin:", error);
+    res.status(500).json({ message: "Erro ao verificar permissões de administrador." });
+  }
+});
+
+
+router.get("/admin/dashboard", verificarAutenticacao, verificarAdmin, (req, res) => {
+  res.status(200).json({ 
+    message: "Acesso autorizado à área de administração.",
+    usuario: {
+      id: req.usuario.usuarioid,
+      nome: req.usuario.nome
+    }
+  });
+});
+
+export default router;

@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const usuario = {
   async cadastroUsuario(dados) {
-    console.log(dados)
+    console.log(dados);
     try {
       const novoUsuario = await prisma.usuario.create({
         data: {
@@ -14,6 +14,7 @@ export const usuario = {
           senha: dados.senha,
           celular: dados.celular,
           nome: dados.nome,
+          admin: dados.admin || false, // Por padrão, não é admin
         },
       });
       return novoUsuario;
@@ -37,8 +38,9 @@ export const usuario = {
       }
   
       const token = createToken({ 
-        iduser: usuarioEncontrado.id,  // Supondo que o campo ID se chame 'id'
-        nome: usuarioEncontrado.nome 
+        iduser: usuarioEncontrado.usuarioid,  
+        nome: usuarioEncontrado.nome,
+        admin: usuarioEncontrado.admin 
       });
   
       return { token, usuario: usuarioEncontrado };
@@ -47,6 +49,22 @@ export const usuario = {
       console.error("Erro ao fazer login:", error);
       throw error;
     }
+  },
+
+  async verificarAdmin(usuarioid) {
+    try {
+      const usuario = await prisma.usuario.findUnique({
+        where: { usuarioid: parseInt(usuarioid) }
+      });
+
+      if (!usuario) {
+        throw new Error("Usuário não encontrado");
+      }
+
+      return { admin: usuario.admin };
+    } catch (error) {
+      console.error("Erro ao verificar status de admin:", error);
+      throw error;
+    }
   }
 };
-

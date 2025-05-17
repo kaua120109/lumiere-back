@@ -14,16 +14,20 @@ datasource db {
 }
 
 model usuario {
-  usuarioid Int        @id @default(autoincrement())
-  usuario   String
-  nome      String
-  cpf       String
-  email     String?
-  celular   String?
-  senha     String
-  endereco  endereco[] // Relacionamento 1:N com Endereco (um usuário pode ter vários endereços)
-  ordens    ordem[] // Relacionamento 1:N com Ordem (um usuário pode ter várias ordens)
-  createdAt DateTime   @default(now())
+  usuarioid   Int          @id @default(autoincrement())
+  usuario     String
+  nome        String
+  cpf         String
+  email       String?
+  celular     String?
+  senha       String
+  endereco    endereco[] // Relacionamento 1:N com Endereco
+  ordens      ordem[] // Relacionamento 1:N com Ordem
+  historias   historia[] // Relacionamento 1:N com Historia
+  comentarios comentario[] // Relacionamento 1:N com Comentario
+  membro      membro? // Relacionamento 1:1 com Membro (novo)
+  createdAt   DateTime     @default(now())
+  admin       Boolean      @default(false)
 }
 
 model endereco {
@@ -91,11 +95,58 @@ model ordemProduto {
 }
 
 model pagamento {
-  pagamentoid BigInt   @id @default(autoincrement())
-  ordemId     BigInt   @unique
-  ordem       ordem    @relation(fields: [ordemId], references: [ordemid]) // Relacionamento N:1 com Ordem
-  status      Int
-  metodo      String
-  transacao   String
-  createdAt   DateTime
+  pagamentoid    BigInt   @id @default(autoincrement())
+  ordemId        BigInt   @unique
+  ordem          ordem    @relation(fields: [ordemId], references: [ordemid])
+  valor          String
+  status         Int
+  data           DateTime @default(now())
+  usuarioid      BigInt
+  transacao      String
+  formaPagamento String
+  cartao         String?
+  parcelas       Int
+  createdAt      DateTime @default(now())
+}
+
+// Existing models remain unchanged...
+
+// New model for stories
+model historia {
+  historiaId  BigInt       @id @default(autoincrement())
+  titulo      String
+  conteudo    String       @db.Text
+  imagem      String?      @db.Text
+  usuarioId   Int
+  usuario     usuario      @relation(fields: [usuarioId], references: [usuarioid])
+  categoria   String?
+  esporte     String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  comentarios comentario[]
+}
+
+// New model for comments on stories
+model comentario {
+  comentarioId BigInt   @id @default(autoincrement())
+  conteudo     String   @db.Text
+  usuarioId    Int
+  usuario      usuario  @relation(fields: [usuarioId], references: [usuarioid])
+  historiaId   BigInt
+  historia     historia @relation(fields: [historiaId], references: [historiaId])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model membro {
+  membroId      BigInt    @id @default(autoincrement())
+  usuarioId     Int       @unique
+  usuario       usuario   @relation(fields: [usuarioId], references: [usuarioid])
+  plano         String    @default("gratuito") // gratuito, premium, vip, etc.
+  dataInicio    DateTime  @default(now())
+  dataExpiracao DateTime?
+  ativo         Boolean   @default(true)
+  beneficios    String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

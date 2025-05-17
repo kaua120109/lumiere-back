@@ -1,21 +1,21 @@
 import { Router } from "express";
 import { categoria } from "./repoCategorias.js";
 import multer from 'multer';
-import path from 'path'; // não se esqueça disso
+import path from 'path'; 
 
 const router = Router();
 
 const storage = multer.diskStorage({
-  destination: 'uploads/', // Pasta onde os arquivos serão salvos
+  destination: 'uploads/', 
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, Date.now() + ext); // Exemplo: 1683891231234.jpg
+    cb(null, Date.now() + ext); 
   }
 });
 
-const upload = multer({ storage }); // <-- você usou esse nome corretamente aqui
+const upload = multer({ storage }); 
 
-router.post("/lista-categorias", async (req, res) => {
+router.get("/lista-categorias", async (req, res) => {
   try {
     const resultado = await categoria.listaCategorias();
     res.status(200).json(resultado);
