@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -21,11 +15,12 @@ model usuario {
   email       String?
   celular     String?
   senha       String
-  endereco    endereco[] // Relacionamento 1:N com Endereco
-  ordens      ordem[] // Relacionamento 1:N com Ordem
-  historias   historia[] // Relacionamento 1:N com Historia
-  comentarios comentario[] // Relacionamento 1:N com Comentario
-  membro      membro? // Relacionamento 1:1 com Membro (novo)
+  endereco    endereco[] // 1:N
+  ordens      ordem[] // 1:N
+  historias   historia[] // 1:N
+  comentarios comentario[] // 1:N
+  membro      membro? // 1:1
+  pagamentos  pagamento[] // 1:N
   createdAt   DateTime     @default(now())
   admin       Boolean      @default(false)
 }
@@ -33,7 +28,7 @@ model usuario {
 model endereco {
   enderecoid  BigInt   @id @default(autoincrement())
   usuarioid   Int
-  usuario     usuario  @relation(fields: [usuarioid], references: [usuarioid]) // Relacionamento N:1 com Usuario
+  usuario     usuario  @relation(fields: [usuarioid], references: [usuarioid])
   cidade      String
   bairro      String
   rua         String
@@ -41,8 +36,15 @@ model endereco {
   complemento String
   estado      String
   cep         String
-  createdAt   DateTime
+  createdAt   DateTime @default(now())
   ordem       ordem[]
+}
+
+model categoria {
+  categoriaid BigInt    @id @default(autoincrement())
+  nome        String
+  produtos    produto[]
+  imagem      String? // pode ser null
 }
 
 model produto {
@@ -58,50 +60,44 @@ model produto {
   ordemProduto ordemProduto[]
 }
 
-model categoria {
-  categoriaid BigInt    @id @default(autoincrement())
-  nome        String
-  produtos    produto[]
-  imagem      String? // ← esse "?" permite null
-}
-
 model ordem {
   ordemid    BigInt         @id @default(autoincrement())
   usuarioid  Int
-  usuario    usuario        @relation(fields: [usuarioid], references: [usuarioid]) // Relacionamento N:1 com Usuario
+  usuario    usuario        @relation(fields: [usuarioid], references: [usuarioid])
   enderecoid BigInt
-  endereco   endereco       @relation(fields: [enderecoid], references: [enderecoid]) // Relacionamento N:1 com Endereco
-  totalPreco String
-  desconto   String
-  frete      String
-  precoFinal String
+  endereco   endereco       @relation(fields: [enderecoid], references: [enderecoid])
+  totalPreco Decimal        @db.Decimal(10, 2)
+  desconto   Decimal        @db.Decimal(10, 2)
+  frete      Decimal        @db.Decimal(10, 2)
+  precoFinal Decimal        @db.Decimal(10, 2)
   status     String
-  createdAt  DateTime
-  updateAt   DateTime
-  produtos   ordemProduto[] // Relacionamento 1:N com OrdemProduto (uma ordem tem vários produtos)
-  pagamento  pagamento? // Relacionamento 1:1 com Pagamento
+  createdAt  DateTime       @default(now())
+  updateAt   DateTime       @default(now()) @updatedAt
+  produtos   ordemProduto[] // 1:N
+  pagamento  pagamento? // 1:1
 }
 
 model ordemProduto {
-  produtoid     BigInt   @id @default(autoincrement())
+  id            BigInt   @id @default(autoincrement())
   ordemid       BigInt
-  ordem         ordem    @relation(fields: [ordemid], references: [ordemid]) // Relacionamento N:1 com Ordem
-  produtoId     BigInt
-  produto       produto  @relation(fields: [produtoId], references: [produtoid]) // Relacionamento N:1 com Produto
+  ordem         ordem    @relation(fields: [ordemid], references: [ordemid])
+  produtoid     BigInt
+  produto       produto  @relation(fields: [produtoid], references: [produtoid])
   quantidade    Int
-  precoUnitario String
-  subtotal      String
-  createdAt     DateTime
+  precoUnitario Decimal  @db.Decimal(10, 2)
+  subtotal      Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
 }
 
 model pagamento {
   pagamentoid    BigInt   @id @default(autoincrement())
-  ordemId        BigInt   @unique
-  ordem          ordem    @relation(fields: [ordemId], references: [ordemid])
-  valor          String
+  ordemid        BigInt   @unique
+  ordem          ordem    @relation(fields: [ordemid], references: [ordemid])
+  valor          Decimal  @db.Decimal(10, 2)
   status         Int
   data           DateTime @default(now())
-  usuarioid      BigInt
+  usuarioid      Int
+  usuario        usuario  @relation(fields: [usuarioid], references: [usuarioid])
   transacao      String
   formaPagamento String
   cartao         String?
@@ -109,44 +105,39 @@ model pagamento {
   createdAt      DateTime @default(now())
 }
 
-// Existing models remain unchanged...
-
-// New model for stories
 model historia {
-  historiaId  BigInt       @id @default(autoincrement())
+  historiaid  BigInt       @id @default(autoincrement())
   titulo      String
   conteudo    String       @db.Text
   imagem      String?      @db.Text
-  usuarioId   Int
-  usuario     usuario      @relation(fields: [usuarioId], references: [usuarioid])
+  usuarioid   Int
+  usuario     usuario      @relation(fields: [usuarioid], references: [usuarioid])
   categoria   String?
   esporte     String?
   createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  updatedAt   DateTime     @default(now()) @updatedAt
   comentarios comentario[]
 }
 
-// New model for comments on stories
 model comentario {
-  comentarioId BigInt   @id @default(autoincrement())
+  comentarioid BigInt   @id @default(autoincrement()) @map("comentarioid")
   conteudo     String   @db.Text
-  usuarioId    Int
-  usuario      usuario  @relation(fields: [usuarioId], references: [usuarioid])
-  historiaId   BigInt
-  historia     historia @relation(fields: [historiaId], references: [historiaId])
+  usuarioid    Int      @map("usuarioid")
+  usuario      usuario  @relation(fields: [usuarioid], references: [usuarioid])
+  historiaid   BigInt   @map("historiaid")
+  historia     historia @relation(fields: [historiaid], references: [historiaid])
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime @default(now()) @updatedAt
 }
 
 model membro {
-  membroId      BigInt    @id @default(autoincrement())
-  usuarioId     Int       @unique
-  usuario       usuario   @relation(fields: [usuarioId], references: [usuarioid])
-  plano         String    @default("gratuito") // gratuito, premium, vip, etc.
+  membroid      BigInt    @id @default(autoincrement())
+  usuarioid     Int       @unique
+  usuario       usuario   @relation(fields: [usuarioid], references: [usuarioid])
   dataInicio    DateTime  @default(now())
   dataExpiracao DateTime?
   ativo         Boolean   @default(true)
   beneficios    String?   @db.Text
   createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  updatedAt     DateTime  @default(now()) @updatedAt
 }

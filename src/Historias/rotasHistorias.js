@@ -1,6 +1,7 @@
 import express from "express";
 import { historias, comentarios } from "./historias.js";
-import { verifyToken } from "../jwt.js";
+import { verifyTokenMiddleware as verifyToken } from "../jwt.js";
+
 
 const router = express.Router();
 
