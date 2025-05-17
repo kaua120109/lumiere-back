@@ -32,9 +32,12 @@ export const historias = {
           titulo: dados.titulo,
           conteudo: dados.conteudo,
           imagem: dados.imagem || null,
-          usuarioId: dados.usuarioId,
           categoria: dados.categoria || null,
           esporte: dados.esporte || null,
+          // Conectar ao usuário existente usando o ID
+          usuario: {
+            connect: { usuarioid: dados.usuarioId }
+          }
         },
       });
       console.log("História criada com sucesso:", result);
