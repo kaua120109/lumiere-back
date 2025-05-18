@@ -73,8 +73,6 @@ export const verifyTokenMiddleware = (req, res, next) => {
  */
 export const verifyToken = (token) => {
   try {
-    console.log('Token received:', token);
-    console.log('Token type:', typeof token);
     
     if (!token || typeof token !== 'string') {
       throw new Error('Token ausente ou inválido.');

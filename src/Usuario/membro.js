@@ -199,7 +199,3 @@ export {
   loginMembro,
   cadastrarMembro  // Certifique-se de que esta linha existe
 };
-
-// A função loginMembro não precisa de alterações
-
-console.log("Código corrigido: removi o campo 'ativo' do objeto de dados ao criar um usuário");

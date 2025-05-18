@@ -3,19 +3,66 @@ import { produto } from "./repoProdutos.js";
 import { verificarAutenticacao } from "../middleware/auth.js";
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
 
-// Configuração do armazenamento de imagens (sem alterações)
+// Garantir que o diretório de uploads existe
+const uploadDir = path.resolve(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log(`Diretório de uploads criado em: ${uploadDir}`);
+}
+
+// Configuração do armazenamento de imagens
 const storage = multer.diskStorage({
-  destination: 'uploads/', 
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, Date.now() + ext);
   }
 });
 
-const upload = multer({ storage });
+// Configuração do multer com melhor tratamento de erros
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
+  fileFilter: (req, file, cb) => {
+    // Verificar tipos de arquivo permitidos
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas!'), false);
+    }
+  }
+});
+
+// Middleware personalizado para lidar com erros do multer
+function handleMulterError(req, res, next) {
+  upload.single('imagem')(req, res, function(err) {
+    if (err instanceof multer.MulterError) {
+      // Erro do multer
+      console.error("Erro Multer:", err);
+      return res.status(400).json({ 
+        message: `Erro no upload: ${err.message}`,
+        field: err.field,
+        code: err.code
+      });
+    } else if (err) {
+      // Outro erro
+      console.error("Erro no upload:", err);
+      return res.status(400).json({ message: `Erro no upload: ${err.message}` });
+    }
+    // Sem erro, continua
+    next();
+  });
+}
 
 // Rota para listar produtos - agora com pesquisa
 router.get("/pesquisar", verificarAutenticacao, async (req, res) => {
@@ -41,10 +88,16 @@ router.get("/lista-produtos", verificarAutenticacao, async (req, res) => {
   }
 });
 
-router.post("/adicionar", upload.single('imagem'), verificarAutenticacao, async (req, res) => {
+router.post("/adicionar", verificarAutenticacao, handleMulterError, async (req, res) => {
   try {
+    console.log("Dados recebidos:", req.body);
+    console.log("Arquivo recebido:", req.file);
+    
     const dados = req.body;
-    const imagem = req.file ? req.file.filename : null;
+    // Corrigir o caminho da imagem para incluir o diretório
+    const imagem = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    console.log("Caminho da imagem:", imagem);
 
     const novoProduto = await produto.criarProduto(dados, imagem);
     res.status(201).json(novoProduto);
@@ -54,11 +107,12 @@ router.post("/adicionar", upload.single('imagem'), verificarAutenticacao, async 
   }
 });
 
-router.post("/atualizar/:id", upload.single("imagem"), verificarAutenticacao, async (req, res) => {
+router.post("/atualizar/:id", verificarAutenticacao, handleMulterError, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { nome, descricao, preco, estoque, categoriaid } = req.body;
-    const imagem = req.file ? `/uploads/produtos/${req.file.filename}` : undefined;
+    // Corrigir o caminho da imagem para ser consistente
+    const imagem = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     // Make sure categoriaid is not undefined before passing it
     const dados = {

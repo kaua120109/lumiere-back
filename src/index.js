@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import path from "path";
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 import usuarioRouter from './Usuario/rotasUsuarios.js';
 import produtosRouter from './Produto/rotasProdutos.js';
@@ -14,9 +16,21 @@ import './bigintExtension.js';
 
 dotenv.config();
 
+// Obter o diretório atual para módulos ES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
-app.use('/uploads', express.static(path.resolve('uploads')));
+// Garantir que o diretório uploads existe
+const uploadsDir = path.resolve(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log(`Diretório de uploads criado em: ${uploadsDir}`);
+}
+
+// Usar path.resolve para obter o caminho absoluto
+app.use('/uploads', express.static(uploadsDir));
 
 const whitelist = ['http://localhost:9090', 'http://localhost:9001', 'http://localhost:9000'];
 const corsOptions = {
@@ -30,7 +44,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Permitir acesso a recursos de origens diferentes
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -44,4 +60,5 @@ app.use('/membros', membroRouter); // Nova rota
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Arquivos estáticos sendo servidos de: ${uploadsDir}`);
 });

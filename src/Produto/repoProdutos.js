@@ -6,7 +6,6 @@ export const produto = {
   // Método para listar produtos com base na pesquisa
   async listarProdutos(query = "") {
     try {
-      console.log("Listando produtos com query:", query);
       
       // Se não houver query, busca todos os produtos sem filtro
       if (!query) {
@@ -21,7 +20,6 @@ export const produto = {
             categoria: true
           }
         });
-        console.log(`Encontrados ${produtos.length} produtos sem filtro`);
         return produtos;
       }
       
@@ -43,7 +41,6 @@ export const produto = {
           categoria: true
         }
       });
-      console.log(`Encontrados ${produtos.length} produtos com filtro "${query}"`);
       return produtos;
     } catch (error) {
       console.error("Erro ao listar produtos:", error);
