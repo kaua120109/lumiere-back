@@ -133,6 +133,7 @@ model comentario {
 model membro {
   membroid      BigInt    @id @default(autoincrement())
   usuarioid     Int       @unique
+  nome          String
   usuario       usuario   @relation(fields: [usuarioid], references: [usuarioid])
   dataInicio    DateTime  @default(now())
   dataExpiracao DateTime?
