@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client"
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 export const categoria = {
   async listaCategorias() {
@@ -8,36 +8,47 @@ export const categoria = {
       select: {
         categoriaid: true,
         nome: true,
-        imagem: true
-      }
-    });
+        imagem: true,
+      },
+    })
   },
 
   async criarCategoria(dados) {
-    console.log("bunda", dados);
+    console.log("Criando categoria com dados:", {
+      nome: dados.nome,
+      imagem: dados.imagem ? "Base64 image data (truncated)" : null,
+    })
+
     return await prisma.categoria.create({
       data: {
         nome: dados.nome,
-        imagem: dados.imagem || null
-      }
-    });
+        imagem: dados.imagem || null,
+      },
+    })
   },
 
-  async atualizarCategoria(categoria, dados) {
+  async atualizarCategoria(categoriaId, dados) {
+    // Criar objeto de dados para atualização
+    const updateData = {
+      nome: dados.nome,
+    }
+
+    // Adicionar imagem apenas se estiver definida
+    if (dados.imagem !== undefined) {
+      updateData.imagem = dados.imagem
+    }
+
     return await prisma.categoria.update({
-      where: { categoriaid: parseInt(categoria) },
-      data: {
-        nome: dados.nome,
-        imagem: dados.imagem || null
-      }
-    });
+      where: { categoriaid: BigInt(categoriaId) },
+      data: updateData,
+    })
   },
 
   async deletarCategoria(id) {
     return await prisma.categoria.delete({
-      where: { categoriaid: BigInt(id) }
-    });
-  }
-};  
+      where: { categoriaid: BigInt(id) },
+    })
+  },
+}
 
-export default categoria;  
+export default categoria

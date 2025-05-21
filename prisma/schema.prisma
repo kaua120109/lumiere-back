@@ -44,7 +44,7 @@ model categoria {
   categoriaid BigInt    @id @default(autoincrement())
   nome        String
   produtos    produto[]
-  imagem      String? // pode ser null
+  imagem      String?   @db.Text // Adicionado @db.Text para suportar strings base64 longas
 }
 
 model produto {
