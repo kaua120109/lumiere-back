@@ -49,11 +49,6 @@ export const produto = {
 
   // Método modificado para aceitar imagem base64 diretamente
   async criarProduto(dados) {
-    console.log("Dados recebidos no repositório:", {
-      ...dados,
-      imagem: dados.imagem ? "Base64 image data (truncated)" : null,
-    })
-
     return await prisma.produto.create({
       data: {
         nome: dados.nome,

@@ -14,11 +14,6 @@ export const categoria = {
   },
 
   async criarCategoria(dados) {
-    console.log("Criando categoria com dados:", {
-      nome: dados.nome,
-      imagem: dados.imagem ? "Base64 image data (truncated)" : null,
-    })
-
     return await prisma.categoria.create({
       data: {
         nome: dados.nome,

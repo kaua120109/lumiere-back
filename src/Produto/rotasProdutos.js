@@ -31,11 +31,6 @@ router.get("/lista-produtos", verificarAutenticacao, async (req, res) => {
 // Rota para adicionar produto - agora aceitando base64
 router.post("/adicionar", verificarAutenticacao, async (req, res) => {
   try {
-    console.log("Dados recebidos:", {
-      ...req.body,
-      imagem: req.body.imagem ? "Base64 image data (truncated)" : null,
-    })
-
     const dados = req.body
     // A imagem já vem como base64 do frontend
 

@@ -17,11 +17,6 @@ router.get("/lista-categorias", async (req, res) => {
 // Rota para adicionar categoria - agora aceitando base64
 router.post("/adicionar", async (req, res) => {
   try {
-    console.log("Dados recebidos:", {
-      ...req.body,
-      imagem: req.body.imagem ? "Base64 image data (truncated)" : null,
-    })
-
     const { nome, imagem } = req.body
 
     // Agora a imagem já vem como base64 do frontend
@@ -42,12 +37,6 @@ router.put("/atualizar/:id", async (req, res) => {
   try {
     const id = req.params.id
     const { nome, imagem } = req.body
-
-    console.log("Atualizando categoria:", {
-      id,
-      nome,
-      imagem: imagem ? "Base64 image data (truncated)" : undefined,
-    })
 
     // Agora a imagem já vem como base64 do frontend
     const resultado = await categoria.atualizarCategoria(id, {
@@ -70,8 +59,6 @@ router.delete("/deletar/:id", async (req, res) => {
     if (!id) {
       return res.status(400).json({ message: "ID não fornecido na URL" })
     }
-
-    console.log("Deletando categoria com ID:", id)
 
     await categoria.deletarCategoria(BigInt(id))
     res.status(200).json({ message: "Categoria deletada com sucesso" })
