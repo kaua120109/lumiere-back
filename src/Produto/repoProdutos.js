@@ -9,14 +9,8 @@ export const produto = {
       // Se não houver query, busca todos os produtos sem filtro
       if (!query) {
         const produtos = await prisma.produto.findMany({
-          select: {
-            produtoid: true,
-            nome: true,
-            descricao: true,
-            preco: true,
-            estoque: true,
-            imagem: true,
-            categoria: true,
+          include: {
+            categoria: true, // Incluir o objeto categoria completo
           },
         })
         return produtos
@@ -30,14 +24,8 @@ export const produto = {
             { descricao: { contains: query, mode: "insensitive" } },
           ],
         },
-        select: {
-          produtoid: true,
-          nome: true,
-          descricao: true,
-          preco: true,
-          estoque: true,
-          imagem: true,
-          categoria: true,
+        include: {
+          categoria: true, // Incluir o objeto categoria completo
         },
       })
       return produtos
@@ -61,6 +49,9 @@ export const produto = {
             categoriaid: Number.parseInt(dados.categoriaid),
           },
         },
+      },
+      include: {
+        categoria: true, // Incluir o objeto categoria na resposta
       },
     })
   },
@@ -93,6 +84,9 @@ export const produto = {
         produtoid: Number.parseInt(id),
       },
       data: updateData,
+      include: {
+        categoria: true, // Incluir o objeto categoria na resposta
+      },
     })
   },
 
