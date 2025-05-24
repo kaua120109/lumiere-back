@@ -10,7 +10,7 @@ import usuarioRouter from './Usuario/rotasUsuarios.js';
 import produtosRouter from './Produto/rotasProdutos.js';
 import categoriasRouter from './Categoria/rotasCategorias.js';
 import historiasRouter from './Historias/rotasHistorias.js';
-import membroRouter from './Usuario/rotaMembro.js';
+import membroRouter from './membro/rotasMembro.js';
 
 import './bigintExtension.js';
 

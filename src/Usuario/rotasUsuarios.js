@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { usuario } from "./repoUsuarios.js";
-import { cadastrarMembro } from './membro.js';
+// import { cadastrarMembro } from './membro.js';
 import { verificarAutenticacao, verificarAdmin } from '../middleware/auth.js';
 
 
 const router = Router();
-router.post('/cadastroMembro', cadastrarMembro);
+// router.post('/cadastroMembro', cadastrarMembro);
 
 router.post("/cadastro", async (req, res) => {
   try {
