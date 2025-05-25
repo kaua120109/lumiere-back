@@ -21,7 +21,6 @@ export const comentarios = {
         },
       });
     } catch (error) {
-      console.error("Erro em listarComentarios:", error);
       throw error;
     }
   },
@@ -44,7 +43,6 @@ export const comentarios = {
         },
       });
     } catch (error) {
-      console.error("Erro em criarComentario:", error);
       throw error;
     }
   },
@@ -57,7 +55,6 @@ export const comentarios = {
         }
       });
     } catch (error) {
-      console.error("Erro em excluirComentario:", error);
       throw error;
     }
   },
@@ -86,7 +83,6 @@ export const comentarios = {
         },
       });
     } catch (error) {
-      console.error("Erro em listarComentariosPorUsuario:", error);
       throw error;
     }
   }

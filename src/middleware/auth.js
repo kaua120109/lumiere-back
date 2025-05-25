@@ -24,7 +24,6 @@ export const verificarAutenticacao = (req, res, next) => {
     // Continua para a próxima função/middleware
     next();
   } catch (error) {
-    console.error('Erro de autenticação:', error);
     return res.status(401).json({ message: error.message });
   }
 };
@@ -68,7 +67,6 @@ export const verificarMembroAtivo = async (req, res, next) => {
     req.membro = membro;
     next();
   } catch (error) {
-    console.error('Erro ao verificar status de membro:', error);
     return res.status(500).json({ message: 'Erro ao verificar status de membro.' });
   }
 };

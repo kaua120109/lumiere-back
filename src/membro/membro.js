@@ -7,7 +7,6 @@ const prisma = new PrismaClient()
 // Função de cadastro de inscrição de membro - versão simplificada
 async function cadastrarInscricaoMembro(req, res) {
   try {
-    console.log("Dados recebidos na rota /inscricao:", req.body)
 
     const { nome, email, senha, cpf, celular } = req.body
 
@@ -70,7 +69,6 @@ async function cadastrarInscricaoMembro(req, res) {
       token,
     })
   } catch (error) {
-    console.error("Erro detalhado ao cadastrar membro:", error)
     return res.status(500).json({
       message: "Erro ao cadastrar membro",
       error: error.message,
@@ -125,7 +123,6 @@ async function loginMembro(req, res) {
       token,
     })
   } catch (error) {
-    console.error("Erro ao realizar login:", error)
     return res.status(500).json({ message: "Erro ao realizar login" })
   }
 }
