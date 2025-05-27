@@ -13,7 +13,6 @@ export const boiler = {
       });
       return novoBoiler;
     } catch (error) {
-      console.error("Erro ao criar o boiler:", error);
       throw error;
     }
   }

@@ -9,7 +9,6 @@ router.get("/lista-categorias", async (req, res) => {
     const resultado = await categoria.listaCategorias()
     res.status(200).json(resultado)
   } catch (error) {
-    console.error("Erro ao listar categorias:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -32,7 +31,6 @@ router.post("/adicionar", async (req, res) => {
 
     res.status(201).json(novaCategoria)
   } catch (error) {
-    console.error("Erro ao adicionar categoria:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -64,7 +62,6 @@ router.put("/atualizar/:id", async (req, res) => {
 
     res.status(200).json(resultado)
   } catch (error) {
-    console.error("Erro ao atualizar categoria:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -98,7 +95,6 @@ router.delete("/deletar/:id", async (req, res) => {
     })
     
   } catch (erro) {
-    console.error("Erro ao deletar categoria:", erro)
     
     // Tratamento específico para diferentes tipos de erro
     if (erro.message.includes("não encontrada") || erro.message.includes("not found")) {
@@ -140,7 +136,6 @@ router.post("/deletar/:id", async (req, res) => {
     })
     
   } catch (erro) {
-    console.error("Erro ao deletar categoria:", erro)
     
     if (erro.message.includes("não encontrada") || erro.message.includes("not found")) {
       return res.status(404).json({ message: "Categoria não encontrada" })

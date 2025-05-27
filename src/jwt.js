@@ -37,16 +37,13 @@ export const createToken = (user) => {
  * Middleware para verificar token JWT em rotas protegidas.
  */
 export const verifyTokenMiddleware = (req, res, next) => {
-  console.log('Headers recebidos:', JSON.stringify(req.headers));
   const authHeader = req.headers.authorization;
-  console.log('Header de autorização:', authHeader);
 
   if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Cabeçalho Authorization ausente ou mal formatado.' });
   }
 
   const token = authHeader.split(' ')[1];
-  console.log('Token extraído:', token ? `${token.substring(0, 10)}...` : 'indefinido');
   if (!token || typeof token !== 'string') {
     return res.status(401).json({ message: 'Token não fornecido ou inválido.' });
   }

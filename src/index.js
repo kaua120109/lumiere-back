@@ -26,7 +26,6 @@ const app = express();
 const uploadsDir = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log(`Diretório de uploads criado em: ${uploadsDir}`);
 }
 
 // Usar path.resolve para obter o caminho absoluto
@@ -59,6 +58,4 @@ app.use('/membros', membroRouter); // Nova rota
 
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-  console.log(`Arquivos estáticos sendo servidos de: ${uploadsDir}`);
 });
