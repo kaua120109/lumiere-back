@@ -26,7 +26,6 @@ router.post("/login", async (req, res) => {
       usuario: result.usuario
     });
   } catch (error) {
-    console.error("Erro ao fazer login:", error);
     res.status(401).json({ 
       message: error.message || "Credenciais inválidas" 
     });

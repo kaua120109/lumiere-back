@@ -46,7 +46,6 @@ export const usuario = {
       return { token, usuario: usuarioEncontrado };
   
     } catch (error) {
-      console.error("Erro ao fazer login:", error);
       throw error;
     }
   },
@@ -63,7 +62,6 @@ export const usuario = {
 
       return { admin: usuario.admin };
     } catch (error) {
-      console.error("Erro ao verificar status de admin:", error);
       throw error;
     }
   }
