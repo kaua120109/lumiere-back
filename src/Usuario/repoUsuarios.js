@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const usuario = {
   async cadastroUsuario(dados) {
-    console.log(dados);
+    console.log("Dados recebidos para cadastro:", dados);
     try {
       const novoUsuario = await prisma.usuario.create({
         data: {
@@ -14,9 +14,10 @@ export const usuario = {
           senha: dados.senha,
           celular: dados.celular,
           nome: dados.nome,
-          admin: dados.admin || false, // Por padrão, não é admin
+          admin: dados.admin || false,
         },
       });
+      console.log("Usuário cadastrado com sucesso:", novoUsuario);
       return novoUsuario;
     } catch (error) {
       console.error("Erro ao cadastrar o usuário:", error);
@@ -25,6 +26,7 @@ export const usuario = {
   },
 
   async login(dados) {
+    console.log("Tentativa de login para:", dados.usuario);
     try {
       const usuarioEncontrado = await prisma.usuario.findFirst({
         where: {
@@ -34,18 +36,34 @@ export const usuario = {
       });
   
       if (!usuarioEncontrado) {
+        console.log("Usuário não encontrado ou senha incorreta");
         throw new Error("Usuário ou senha incorretos");
       }
   
+      console.log("Usuário encontrado:", usuarioEncontrado.nome);
+      
+      // CORREÇÃO: Usar 'iduser' conforme esperado no JWT
       const token = createToken({ 
+        id: usuarioEncontrado.usuarioid,  // Mudança aqui
         iduser: usuarioEncontrado.usuarioid,  
         nome: usuarioEncontrado.nome,
         admin: usuarioEncontrado.admin 
       });
+
+      console.log("Token criado com sucesso");
   
-      return { token, usuario: usuarioEncontrado };
+      return { 
+        token, 
+        usuario: {
+          usuarioid: usuarioEncontrado.usuarioid,
+          nome: usuarioEncontrado.nome,
+          usuario: usuarioEncontrado.usuario,
+          admin: usuarioEncontrado.admin
+        }
+      };
   
     } catch (error) {
+      console.error("Erro no login:", error);
       throw error;
     }
   },

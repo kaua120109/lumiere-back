@@ -11,6 +11,7 @@ import produtosRouter from './Produto/rotasProdutos.js';
 import categoriasRouter from './Categoria/rotasCategorias.js';
 import historiasRouter from './Historias/rotasHistorias.js';
 import membroRouter from './membro/rotasMembro.js';
+import googleRouter from './GoogleLogin/rotasGoogle.js'; // Nova importação
 
 import './bigintExtension.js';
 
@@ -42,6 +43,15 @@ const corsOptions = {
   }
 };
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Servidor está funcionando',
+    timestamp: new Date().toISOString()
+  });
+}
+);
+
 app.use(cors(corsOptions));
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Permitir acesso a recursos de origens diferentes
@@ -55,6 +65,7 @@ app.use('/produtos', produtosRouter);
 app.use('/categorias', categoriasRouter); 
 app.use('/historias', historiasRouter);
 app.use('/membros', membroRouter); // Nova rota
+app.use('/logingg', googleRouter); // Nova rota para autenticação
 
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {

@@ -23,6 +23,7 @@ model usuario {
   pagamentos  pagamento[] // 1:N
   createdAt   DateTime     @default(now())
   admin       Boolean      @default(false)
+  googleId    String?      @unique // Novo campo para ID do Google
 }
 
 model endereco {
@@ -141,4 +142,14 @@ model membro {
   beneficios    String?   @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
+}
+
+model promocao {
+  promocaoid BigInt   @id @default(autoincrement())
+  codigo     String   @unique
+  descricao  String
+  desconto   Decimal  @db.Decimal(10, 2)
+  ativo      Boolean  @default(true)
+  validade   DateTime
+  createdAt  DateTime @default(now())
 }
