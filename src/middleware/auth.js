@@ -1,71 +1,72 @@
-import { verifyToken } from '../jwt.js';
-import { PrismaClient } from '@prisma/client';
+import { verifyToken } from "../jwt.js"
+import { PrismaClient } from "@prisma/client"
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
+/**
+ * CORREÇÃO: Middleware de autenticação melhorado
+ */
 export const verificarAutenticacao = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Token de autenticação não fornecido' });
+  const authHeader = req.headers.authorization
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Token de autenticação não fornecido" })
   }
 
   try {
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
-    
-    // CORREÇÃO: Usar os campos corretos do token
+    const token = authHeader.split(" ")[1]
+    const decoded = verifyToken(token)
+
+    // CORREÇÃO: Padronização dos campos do usuário
     req.usuario = {
-      usuarioid: decoded.id || decoded.iduser, // Aceita ambos os formatos
+      usuarioid: decoded.id || decoded.iduser || decoded.usuarioid,
       nome: decoded.nome,
-      admin: decoded.admin
-    };
-    
-    next();
+      admin: decoded.admin || false,
+    }
+
+    console.log("Usuário autenticado:", req.usuario)
+    next()
   } catch (error) {
-    console.error('Erro de autenticação:', error);
-    return res.status(401).json({ message: error.message });
+    console.error("Erro de autenticação:", error.message)
+    return res.status(401).json({ message: error.message })
   }
-};
+}
 
 export const verificarAdmin = (req, res, next) => {
   if (!req.usuario || !req.usuario.admin) {
-    return res.status(403).json({ message: 'Acesso restrito a administradores' });
+    return res.status(403).json({ message: "Acesso restrito a administradores" })
   }
-  
-  next();
-};
 
-// Novo middleware para verificar se o usuário é um membro ativo
+  next()
+}
+
+/**
+ * CORREÇÃO: Middleware melhorado para verificar membro ativo
+ */
 export const verificarMembroAtivo = async (req, res, next) => {
   try {
-    // Verifica se o usuário está autenticado
     if (!req.usuario || !req.usuario.usuarioid) {
-      return res.status(401).json({ message: 'Usuário não autenticado' });
+      return res.status(401).json({ message: "Usuário não autenticado" })
     }
-    
-    // Verificar se o usuário é um membro
+
     const membro = await prisma.membro.findUnique({
-      where: { usuarioId: req.usuario.usuarioid }
-    });
-    
+      where: { usuarioId: req.usuario.usuarioid },
+    })
+
     if (!membro) {
-      return res.status(403).json({ message: 'Acesso negado. Você precisa ser um membro para acessar esta área.' });
+      return res.status(403).json({ message: "Acesso negado. Você precisa ser um membro para acessar esta área." })
     }
-    
-    // Verificar se o membro está ativo e se a assinatura não expirou
-    const ativo = membro.ativo && 
-                 (!membro.dataExpiracao || new Date(membro.dataExpiracao) > new Date());
-    
+
+    const ativo = membro.ativo && (!membro.dataExpiracao || new Date(membro.dataExpiracao) > new Date())
+
     if (!ativo) {
-      return res.status(403).json({ message: 'Acesso negado. Sua assinatura está inativa ou expirada.' });
+      return res.status(403).json({ message: "Acesso negado. Sua assinatura está inativa ou expirada." })
     }
-    
-    // Adicionar informações do membro ao objeto de requisição
-    req.membro = membro;
-    next();
+
+    req.membro = membro
+    next()
   } catch (error) {
-    console.error('Erro ao verificar status de membro:', error);
-    return res.status(500).json({ message: 'Erro ao verificar status de membro.' });
+    console.error("Erro ao verificar status de membro:", error)
+    return res.status(500).json({ message: "Erro ao verificar status de membro." })
   }
-};
+}
