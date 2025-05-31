@@ -73,11 +73,11 @@ export const verifyToken = (token) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET)
-    console.log("Token verificado com sucesso:", {
-      id: decoded.id,
-      nome: decoded.nome,
-      exp: new Date(decoded.exp * 1000),
-    })
+    // console.log("Token verificado com sucesso:", {
+    //   id: decoded.id,
+    //   nome: decoded.nome,
+    //   exp: new Date(decoded.exp * 1000),
+    // })
 
     return decoded
   } catch (error) {
