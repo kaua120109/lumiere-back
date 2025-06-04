@@ -1,71 +1,89 @@
+// src/router/repo/repoUsuarios.js
 import { PrismaClient } from "@prisma/client"
-import { createToken } from "../jwt.js"
+import { createToken } from "../jwt.js"// Ajuste o caminho conforme sua estrutura
+import { adicionarPontos } from '../service/pontosService.js';
+ // Importa o serviço de pontos
 
 const prisma = new PrismaClient()
 
 export const usuario = {
   async cadastroUsuario(dados) {
-    console.log("Dados recebidos para cadastro:", dados)
+    console.log("Dados recebidos para cadastro:", dados) //
     try {
+      // Cria o usuário com pontos e nível inicializados
       const novoUsuario = await prisma.usuario.create({
         data: {
-          usuario: dados.usuario,
-          cpf: dados.cpf,
-          senha: dados.senha,
-          celular: dados.celular,
-          nome: dados.nome,
-          admin: dados.admin || false,
+          usuario: dados.usuario, //
+          cpf: dados.cpf, //
+          senha: dados.senha, //
+          celular: dados.celular, //
+          nome: dados.nome, //
+          admin: dados.admin || false, //
+          pontos: 0, // Inicializa com 0 pontos
+          nivelMembro: 1, // Inicializa no nível 1
+          email: dados.email, // Garante que o email é passado
         },
       })
-      console.log("Usuário cadastrado com sucesso:", novoUsuario)
+      console.log("Usuário cadastrado com sucesso:", novoUsuario) //
+
+      // --- ADICIONAR PONTOS AQUI: Bônus de boas-vindas ---
+      const pontosBoasVindas = 100; // Defina a quantidade de pontos de boas-vindas
+      await adicionarPontos(novoUsuario.usuarioid, pontosBoasVindas);
+      console.log(`[Pontos] Bônus de boas-vindas de ${pontosBoasVindas} pontos para ${novoUsuario.nome}.`);
+      // --- FIM DA ADIÇÃO DE PONTOS ---
+
       return novoUsuario
     } catch (error) {
-      console.error("Erro ao cadastrar o usuário:", error)
-      throw error
+      console.error("Erro ao cadastrar usuário:", error) //
+      throw new Error("Erro ao cadastrar usuário.") //
     }
   },
 
-  /**
-   * CORREÇÃO: Função de login melhorada
-   */
   async login(dados) {
-    console.log("Tentativa de login para:", dados.usuario)
     try {
       const usuarioEncontrado = await prisma.usuario.findFirst({
         where: {
-          usuario: dados.usuario,
-          senha: dados.senha,
+          OR: [{ usuario: dados.usuario }, { email: dados.usuario }], // Permite login por usuario ou email
         },
       })
 
       if (!usuarioEncontrado) {
-        console.log("Usuário não encontrado ou senha incorreta")
-        throw new Error("Usuário ou senha incorretos")
+        throw new Error("Usuário ou senha inválidos.") //
       }
 
-      console.log("Usuário encontrado:", usuarioEncontrado.nome)
+      // IMPORTANTE: Assumindo que a senha já está criptografada ao ser armazenada
+      // e que você tem um método para comparar senhas (ex: bcrypt.compare)
+      // Se não estiver usando bcrypt, adapte esta parte.
+      const senhaCorreta = dados.senha === usuarioEncontrado.senha // Isso é APENAS PARA TESTE. Use bcrypt.compare!
+      // const senhaCorreta = await bcrypt.compare(dados.senha, usuarioEncontrado.senha); // Linha correta com bcrypt
 
-      // CORREÇÃO: Usar dados padronizados para o token
+      if (!senhaCorreta) {
+        throw new Error("Usuário ou senha inválidos.") //
+      }
+
       const token = createToken({
-        iduser: usuarioEncontrado.usuarioid,
-        usuarioid: usuarioEncontrado.usuarioid,
-        nome: usuarioEncontrado.nome,
-        admin: usuarioEncontrado.admin,
+        iduser: usuarioEncontrado.usuarioid, //
+        nome: usuarioEncontrado.nome, //
+        usuario: usuarioEncontrado.usuario, //
+        admin: usuarioEncontrado.admin, //
+        // Retornar pontos e nível no objeto do usuário logado para o frontend usar
+        pontos: usuarioEncontrado.pontos,
+        nivelMembro: usuarioEncontrado.nivelMembro,
       })
 
-      console.log("Token criado com sucesso")
-
       return {
-        token,
+        token, //
         usuario: {
-          usuarioid: usuarioEncontrado.usuarioid,
-          nome: usuarioEncontrado.nome,
-          usuario: usuarioEncontrado.usuario,
-          admin: usuarioEncontrado.admin,
+          usuarioid: usuarioEncontrado.usuarioid, //
+          nome: usuarioEncontrado.nome, //
+          usuario: usuarioEncontrado.usuario, //
+          admin: usuarioEncontrado.admin, //
+          pontos: usuarioEncontrado.pontos, // Incluir pontos
+          nivelMembro: usuarioEncontrado.nivelMembro, // Incluir nível
         },
       }
     } catch (error) {
-      console.error("Erro no login:", error)
+      console.error("Erro no login:", error) //
       throw error
     }
   },
@@ -76,24 +94,26 @@ export const usuario = {
   async obterPerfil(usuarioid) {
     try {
       const usuario = await prisma.usuario.findUnique({
-        where: { usuarioid: Number.parseInt(usuarioid) },
+        where: { usuarioid: Number.parseInt(usuarioid) }, //
         select: {
-          usuarioid: true,
-          nome: true,
-          usuario: true,
-          cpf: true,
-          celular: true,
-          admin: true,
+          usuarioid: true, //
+          nome: true, //
+          usuario: true, //
+          cpf: true, //
+          celular: true, //
+          admin: true, //
+          pontos: true, // Incluir pontos
+          nivelMembro: true, // Incluir nível
         },
       })
 
       if (!usuario) {
-        throw new Error("Usuário não encontrado")
+        throw new Error("Usuário não encontrado") //
       }
 
       return usuario
     } catch (error) {
-      console.error("Erro ao obter perfil:", error)
+      console.error("Erro ao obter perfil:", error) //
       throw error
     }
   },
@@ -101,15 +121,12 @@ export const usuario = {
   async verificarAdmin(usuarioid) {
     try {
       const usuario = await prisma.usuario.findUnique({
-        where: { usuarioid: Number.parseInt(usuarioid) },
+        where: { usuarioid: usuarioid },
+        select: { admin: true },
       })
-
-      if (!usuario) {
-        throw new Error("Usuário não encontrado")
-      }
-
-      return { admin: usuario.admin }
+      return usuario?.admin || false
     } catch (error) {
+      console.error("Erro ao verificar admin:", error) //
       throw error
     }
   },

@@ -47,131 +47,110 @@ export const produto = {
         emOferta: dados.emOferta || false,
         dataInicioOferta: dados.dataInicioOferta ? new Date(dados.dataInicioOferta) : null,
         dataFimOferta: dados.dataFimOferta ? new Date(dados.dataFimOferta) : null,
-        estoque: Number.parseInt(dados.estoque),
-        imagem: dados.imagem ?? null,
+        estoque: dados.estoque,
+        categoriaid: BigInt(dados.categoriaid),
+        imagem: dados.imagem || null,
         imagensAdicionais: dados.imagensAdicionais || [],
         cores: dados.cores || [],
         tamanhos: dados.tamanhos || [],
-        categoria: {
-          connect: {
-            categoriaid: Number.parseInt(dados.categoriaid),
-          },
-        },
-      },
-      include: {
-        categoria: true, // Incluir o objeto categoria na resposta
       },
     })
+  },
+
+  async obterProdutoPorId(id) {
+    try {
+      const produtoEncontrado = await prisma.produto.findUnique({
+        where: { produtoid: BigInt(id) },
+        include: {
+          categoria: true, // Incluir o objeto categoria completo
+        },
+      })
+      if (!produtoEncontrado) {
+        throw new Error("Produto não encontrado")
+      }
+      return produtoEncontrado
+    } catch (error) {
+      console.error("Erro ao obter produto por ID:", error)
+      throw new Error("Erro ao obter produto")
+    }
   },
 
   async atualizarProduto(id, dados) {
-    // Create the update data object
-    const updateData = {
-      nome: dados.nome,
-      descricao: dados.descricao,
-      preco: Number.parseFloat(dados.preco),
-      estoque: Number.parseInt(dados.estoque),
-    }
-
-    // Campos de oferta
-    if (dados.precoOriginal !== undefined) {
-      updateData.precoOriginal = dados.precoOriginal ? Number.parseFloat(dados.precoOriginal) : null
-    }
-    
-    if (dados.porcentagemDesconto !== undefined) {
-      updateData.porcentagemDesconto = dados.porcentagemDesconto ? Number.parseInt(dados.porcentagemDesconto) : null
-    }
-    
-    if (dados.emOferta !== undefined) {
-      updateData.emOferta = dados.emOferta
-    }
-    
-    if (dados.dataInicioOferta !== undefined) {
-      updateData.dataInicioOferta = dados.dataInicioOferta ? new Date(dados.dataInicioOferta) : null
-    }
-    
-    if (dados.dataFimOferta !== undefined) {
-      updateData.dataFimOferta = dados.dataFimOferta ? new Date(dados.dataFimOferta) : null
-    }
-
-    // Campos de arrays
-    if (dados.imagensAdicionais !== undefined) {
-      updateData.imagensAdicionais = dados.imagensAdicionais
-    }
-    
-    if (dados.cores !== undefined) {
-      updateData.cores = dados.cores
-    }
-    
-    if (dados.tamanhos !== undefined) {
-      updateData.tamanhos = dados.tamanhos
-    }
-
-    // Only add the image if it exists
-    if (dados.imagem !== undefined) {
-      updateData.imagem = dados.imagem
-    }
-
-    // Only connect to category if categoriaid exists
-    if (dados.categoriaid) {
-      updateData.categoria = {
-        connect: {
-          categoriaid: Number.parseInt(dados.categoriaid),
+    try {
+      const produtoAtualizado = await prisma.produto.update({
+        where: { produtoid: BigInt(id) },
+        data: {
+          nome: dados.nome,
+          descricao: dados.descricao,
+          preco: Number.parseFloat(dados.preco),
+          precoOriginal: dados.precoOriginal ? Number.parseFloat(dados.precoOriginal) : null,
+          porcentagemDesconto: dados.porcentagemDesconto ? Number.parseInt(dados.porcentagemDesconto) : null,
+          emOferta: dados.emOferta || false,
+          dataInicioOferta: dados.dataInicioOferta ? new Date(dados.dataInicioOferta) : null,
+          dataFimOferta: dados.dataFimOferta ? new Date(dados.dataFimOferta) : null,
+          estoque: dados.estoque,
+          categoriaid: BigInt(dados.categoriaid),
+          imagem: dados.imagem || null,
+          imagensAdicionais: dados.imagensAdicionais || [],
+          cores: dados.cores || [],
+          tamanhos: dados.tamanhos || [],
         },
-      }
+      })
+      return produtoAtualizado
+    } catch (error) {
+      console.error("Erro ao atualizar produto:", error)
+      throw new Error("Erro ao atualizar produto")
     }
-
-    return await prisma.produto.update({
-      where: {
-        produtoid: Number.parseInt(id),
-      },
-      data: updateData,
-      include: {
-        categoria: true, // Incluir o objeto categoria na resposta
-      },
-    })
   },
 
-  // Método para buscar produtos em oferta
+  async deletarProduto(id) {
+    try {
+      await prisma.produto.delete({
+        where: { produtoid: BigInt(id) },
+      })
+      return { message: "Produto deletado com sucesso" }
+    } catch (error) {
+      console.error("Erro ao deletar produto:", error)
+      throw new Error("Erro ao deletar produto")
+    }
+  },
+
+  // Novo método para listar produtos em oferta
   async listarProdutosEmOferta() {
     try {
       const agora = new Date()
-      
-      const produtos = await prisma.produto.findMany({
+      const produtosEmOferta = await prisma.produto.findMany({
         where: {
           emOferta: true,
-          OR: [
-            { dataFimOferta: null }, // Ofertas sem data de fim
-            { dataFimOferta: { gte: agora } } // Ofertas que ainda não expiraram
-          ]
+          dataInicioOferta: {
+            lte: agora,
+          },
+          dataFimOferta: {
+            gte: agora,
+          },
         },
         include: {
           categoria: true,
         },
-        orderBy: {
-          porcentagemDesconto: 'desc' // Ordenar por maior desconto
-        }
       })
-      
-      return produtos
+      return produtosEmOferta
     } catch (error) {
       console.error("Erro ao listar produtos em oferta:", error)
       throw new Error("Erro ao listar produtos em oferta")
     }
   },
 
-  // Método para aplicar oferta em lote
+  // Novo método para aplicar oferta em lote
   async aplicarOfertaLote(produtoIds, dadosOferta) {
     try {
       const updateData = {
         emOferta: true,
-        precoOriginal: dadosOferta.precoOriginal ? Number.parseFloat(dadosOferta.precoOriginal) : undefined,
-        porcentagemDesconto: dadosOferta.porcentagemDesconto ? Number.parseInt(dadosOferta.porcentagemDesconto) : undefined,
-        dataInicioOferta: dadosOferta.dataInicioOferta ? new Date(dadosOferta.dataInicioOferta) : undefined,
-        dataFimOferta: dadosOferta.dataFimOferta ? new Date(dadosOferta.dataFimOferta) : undefined,
+        dataInicioOferta: dadosOferta.dataInicioOferta ? new Date(dadosOferta.dataInicioOferta) : new Date(),
+        dataFimOferta: dadosOferta.dataFimOferta ? new Date(dadosOferta.dataFimOferta) : null,
+        porcentagemDesconto: dadosOferta.porcentagemDesconto ? Number.parseInt(dadosOferta.porcentagemDesconto) : null,
       }
 
-      // Calcular novo preço se houver desconto
+      // Se precoOriginal e porcentagemDesconto forem fornecidos, calcula o novo preço
       if (dadosOferta.precoOriginal && dadosOferta.porcentagemDesconto) {
         const precoOriginal = Number.parseFloat(dadosOferta.precoOriginal)
         const desconto = Number.parseInt(dadosOferta.porcentagemDesconto)
@@ -207,7 +186,11 @@ export const produto = {
           }
         },
         data: {
-          emOferta: false
+          emOferta: false,
+          precoOriginal: null, // Limpa o preço original quando a oferta expira
+          porcentagemDesconto: null, // Limpa a porcentagem de desconto
+          dataInicioOferta: null,
+          dataFimOferta: null,
         }
       })
 
@@ -216,14 +199,5 @@ export const produto = {
       console.error("Erro ao remover ofertas expiradas:", error)
       throw new Error("Erro ao remover ofertas expiradas")
     }
-  },
-
-  // Método corrigido para receber diretamente o ID como número
-  async deletarProduto(id) {
-    return await prisma.produto.delete({
-      where: {
-        produtoid: id, // ID já é um número
-      },
-    })
   },
 }

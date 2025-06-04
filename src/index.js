@@ -12,6 +12,7 @@ import categoriasRouter from './Categoria/rotasCategorias.js';
 import historiasRouter from './Historias/rotasHistorias.js';
 import membroRouter from './membro/rotasMembro.js';
 import googleRouter from './GoogleLogin/rotasGoogle.js'; // Nova importação
+import recompensasRouter from './RecompensasMembro/rotaRecompensas.js'
 
 import './bigintExtension.js';
 
@@ -66,6 +67,7 @@ app.use('/categorias', categoriasRouter);
 app.use('/historias', historiasRouter);
 app.use('/membros', membroRouter); // Nova rota
 app.use('/logingg', googleRouter); // Nova rota para autenticação
+app.use('/recompensas', recompensasRouter);
 
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {

@@ -39,28 +39,46 @@ router.get("/ofertas", async (req, res) => {
   }
 })
 
-// Rota para adicionar produto
-router.post("/adicionar", verificarAutenticacao, async (req, res) => {
+// Rota para obter um produto por ID
+router.get("/api/produtos/:id", async (req, res) => {
   try {
-    const dados = req.body
-    const novoProduto = await produto.criarProduto(dados)
-    res.status(201).json(novoProduto)
+    const produtoEncontrado = await produto.obterProdutoPorId(req.params.id)
+    res.status(200).json(produtoEncontrado)
   } catch (error) {
-    console.error("Erro ao adicionar produto:", error)
-    res.status(500).json({ error: error.message })
+    console.error("Erro ao obter produto por ID:", error)
+    res.status(500).json({ message: error.message })
   }
 })
 
-// Rota para atualizar produto
-router.post("/atualizar/:id", verificarAutenticacao, async (req, res) => {
+// Rota para criar um produto
+router.post("/produtos", verificarAutenticacao, async (req, res) => {
   try {
-    const id = Number.parseInt(req.params.id)
-    const dados = req.body
+    const novoProduto = await produto.criarProduto(req.body)
+    res.status(201).json(novoProduto)
+  } catch (error) {
+    console.error("Erro ao criar produto:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
 
-    const atualizado = await produto.atualizarProduto(id, dados)
-    res.status(200).json(atualizado)
+// Rota para atualizar um produto
+router.put("/atualizar/:id", verificarAutenticacao, async (req, res) => {
+  try {
+    const produtoAtualizado = await produto.atualizarProduto(req.params.id, req.body)
+    res.status(200).json(produtoAtualizado)
   } catch (error) {
     console.error("Erro ao atualizar produto:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Rota para deletar um produto
+router.delete("/api/produtos/:id", verificarAutenticacao, async (req, res) => {
+  try {
+    const resultado = await produto.deletarProduto(req.params.id)
+    res.status(200).json(resultado)
+  } catch (error) {
+    console.error("Erro ao deletar produto:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -83,23 +101,12 @@ router.post("/ofertas/aplicar-lote", verificarAutenticacao, async (req, res) => 
 })
 
 // Nova rota para remover ofertas expiradas
-router.post("/ofertas/remover-expiradas", verificarAutenticacao, async (req, res) => {
+router.post("ofertas/remover-expiradas", verificarAutenticacao, async (req, res) => {
   try {
     const resultado = await produto.removerOfertasExpiradas()
     res.status(200).json(resultado)
   } catch (error) {
     console.error("Erro ao remover ofertas expiradas:", error)
-    res.status(500).json({ error: error.message })
-  }
-})
-
-// Rota para deletar produto
-router.post("/deletar/:id", verificarAutenticacao, async (req, res) => {
-  try {
-    const id = Number.parseInt(req.params.id)
-    await produto.deletarProduto(id)
-    res.status(204).send()
-  } catch (error) {
     res.status(500).json({ error: error.message })
   }
 })

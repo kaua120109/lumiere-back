@@ -22,6 +22,9 @@ export const verificarAutenticacao = (req, res, next) => {
       usuarioid: decoded.id || decoded.iduser || decoded.usuarioid,
       nome: decoded.nome,
       admin: decoded.admin || false,
+      // Incluir pontos e nível do membro, se estiverem no payload do token
+      pontos: decoded.pontos,
+      nivelMembro: decoded.nivelMembro,
     }
 
     console.log("Usuário autenticado:", req.usuario)
@@ -60,13 +63,12 @@ export const verificarMembroAtivo = async (req, res, next) => {
     const ativo = membro.ativo && (!membro.dataExpiracao || new Date(membro.dataExpiracao) > new Date())
 
     if (!ativo) {
-      return res.status(403).json({ message: "Acesso negado. Sua assinatura está inativa ou expirada." })
+      return res.status(403).json({ message: "Acesso negado. Sua assinatura de membro está inativa ou expirada." })
     }
 
-    req.membro = membro
     next()
   } catch (error) {
-    console.error("Erro ao verificar status de membro:", error)
-    return res.status(500).json({ message: "Erro ao verificar status de membro." })
+    console.error("Erro ao verificar membro ativo:", error)
+    return res.status(500).json({ message: "Erro interno ao verificar status de membro." })
   }
 }

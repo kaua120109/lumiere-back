@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcrypt"
-import { createToken } from "../jwt.js"
+import { createToken } from "../jwt.js"// Ajuste o caminho
+import { adicionarPontos } from '../service/pontosService.js';
+; // Importa o serviço de pontos
 
 const prisma = new PrismaClient()
 
@@ -26,18 +28,20 @@ async function cadastrarInscricaoMembro(req, res) {
     const salt = await bcrypt.genSalt(10)
     const senhaCriptografada = await bcrypt.hash(senha, salt)
 
-    const usuario = email.split("@")[0]
+    const usuarioLogin = email.split("@")[0] // Define o campo 'usuario' como a parte inicial do email
 
     // Criar usuário
     const novoUsuario = await prisma.usuario.create({
       data: {
         nome,
-        usuario,
+        usuario: usuarioLogin, // Preenche o campo 'usuario'
         email,
         cpf: cpf || null,
         celular: celular || null,
         senha: senhaCriptografada,
         admin: false,
+        pontos: 0, // Inicializa com 0 pontos
+        nivelMembro: 1, // Inicializa no nível 1
       },
     })
 
@@ -45,26 +49,39 @@ async function cadastrarInscricaoMembro(req, res) {
     const novoMembro = await prisma.membro.create({
       data: {
         usuarioid: novoUsuario.usuarioid,
-        nome: nome,
-        ativo: true,
+        nome: novoUsuario.nome,
         dataInicio: new Date(),
-        dataExpiracao: null,
+        ativo: true,
       },
     })
+
+    // --- ADICIONAR PONTOS AQUI: Bônus de boas-vindas para novos membros ---
+    const pontosBoasVindasMembro = 200; // Defina a quantidade de pontos de boas-vindas para membros
+    await adicionarPontos(novoUsuario.usuarioid, pontosBoasVindasMembro);
+    console.log(`[Pontos] Bônus de boas-vindas de membro de ${pontosBoasVindasMembro} pontos para ${novoUsuario.nome}.`);
+    // --- FIM DA ADIÇÃO DE PONTOS ---
 
     const token = createToken({
       iduser: novoUsuario.usuarioid,
       nome: novoUsuario.nome,
       usuario: novoUsuario.usuario,
       admin: novoUsuario.admin,
-      membro: true,
+      membro: true, // Indica que o usuário é um membro
+      pontos: novoUsuario.pontos + pontosBoasVindasMembro, // Inclui os pontos iniciais e de bônus
+      nivelMembro: novoUsuario.nivelMembro, // Inclui o nível inicial
     })
 
-    const { senha: _, ...usuarioSemSenha } = novoUsuario
 
-    return res.status(201).json({
+    res.status(201).json({
       message: "Membro cadastrado com sucesso",
-      usuario: usuarioSemSenha,
+      usuario: {
+        usuarioid: novoUsuario.usuarioid,
+        nome: novoUsuario.nome,
+        usuario: novoUsuario.usuario,
+        email: novoUsuario.email,
+        pontos: novoUsuario.pontos + pontosBoasVindasMembro, // Retorna os pontos já com o bônus
+        nivelMembro: novoUsuario.nivelMembro,
+      },
       membro: novoMembro,
       token,
     })
@@ -112,19 +129,29 @@ async function loginMembro(req, res) {
       nome: usuario.nome,
       usuario: usuario.usuario,
       admin: usuario.admin,
-      membro: true,
+      membro: usuario.membro ? true : false, // Indica se o usuário é um membro
+      pontos: usuario.pontos, // Inclui os pontos no token
+      nivelMembro: usuario.nivelMembro, // Inclui o nível no token
     })
 
-    const { senha: _, ...usuarioSemSenha } = usuario
-
-    return res.status(200).json({
-      message: "Login realizado com sucesso",
-      usuario: usuarioSemSenha,
+    res.status(200).json({
+      message: "Login bem-sucedido!",
       token,
+      usuario: {
+        usuarioid: usuario.usuarioid,
+        nome: usuario.nome,
+        usuario: usuario.usuario,
+        email: usuario.email,
+        admin: usuario.admin,
+        membro: usuario.membro, // Retorna o objeto membro completo se existir
+        pontos: usuario.pontos, // Retorna os pontos
+        nivelMembro: usuario.nivelMembro, // Retorna o nível
+      },
     })
   } catch (error) {
-    return res.status(500).json({ message: "Erro ao realizar login" })
+    console.error("Erro no login do membro:", error)
+    return res.status(500).json({ message: "Erro interno do servidor." })
   }
 }
 
-export { cadastrarInscricaoMembro, loginMembro, cadastrarMembro }
+export { cadastrarInscricaoMembro, cadastrarMembro, loginMembro }

@@ -8,25 +8,27 @@ datasource db {
 }
 
 model usuario {
-  usuarioid        Int               @id @default(autoincrement())
-  usuario          String
-  nome             String
-  cpf              String
-  email            String?
-  celular          String?
-  senha            String
-  endereco         endereco[]
-  ordens           ordem[]
-  historias        historia[]
-  comentarios      comentario[]
-  membro           membro?
-  pagamentos       pagamento[]
-  ofertaUsuarios   ofertaUsuario[]
-  conteudoUsuarios conteudoUsuario[]
-  eventoUsuarios   eventoUsuario[]
-  createdAt        DateTime          @default(now())
-  admin            Boolean           @default(false)
-  googleId         String?           @unique
+  usuarioid      Int             @id @default(autoincrement())
+  usuario        String
+  nome           String
+  cpf            String
+  email          String?
+  celular        String?
+  senha          String
+  endereco       endereco[]
+  ordens         ordem[]
+  historias      historia[]
+  comentarios    comentario[]
+  membro         membro?
+  pagamentos     pagamento[]
+  ofertaUsuarios ofertaUsuario[]
+  createdAt      DateTime        @default(now())
+  admin          Boolean         @default(false)
+  googleId       String?         @unique
+  // --- CAMPOS ADICIONADOS PARA O SISTEMA DE RECOMPENSAS ---
+  pontos         Int             @default(0) // Total de pontos acumulados pelo usuário
+  nivelMembro    Int             @default(1) // Nível atual do membro (1, 2, 3, 4, etc.)
+  // --- FIM DOS CAMPOS ADICIONADOS ---
 }
 
 model endereco {
@@ -176,25 +178,23 @@ model oferta {
 }
 
 model conteudo {
-  conteudoid BigInt            @id @default(autoincrement())
+  conteudoid BigInt   @id @default(autoincrement())
   titulo     String
   tipo       String // vídeo, treino, dica...
-  descricao  String            @db.Text
+  descricao  String   @db.Text
   url        String
-  imagem     String?           @db.Text
-  createdAt  DateTime          @default(now())
-  usuarios   conteudoUsuario[]
+  imagem     String?  @db.Text
+  createdAt  DateTime @default(now())
 }
 
 model evento {
-  eventoid  BigInt          @id @default(autoincrement())
+  eventoid  BigInt   @id @default(autoincrement())
   titulo    String
-  descricao String          @db.Text
+  descricao String   @db.Text
   data      DateTime
   local     String
-  imagem    String?         @db.Text
-  criadoEm  DateTime        @default(now())
-  usuarios  eventoUsuario[]
+  imagem    String?  @db.Text
+  criadoEm  DateTime @default(now())
 }
 
 model recompensa {
@@ -202,9 +202,12 @@ model recompensa {
   titulo       String
   descricao    String   @db.Text
   imagem       String?  @db.Text
-  pontos       Int
+  pontos       Int // Pontos necessários para resgatar
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now())
+  // --- CAMPO ADICIONADO PARA O SISTEMA DE RECOMPENSAS ---
+  nivelMinimo  Int      @default(1) // Nível mínimo do usuário para que esta recompensa seja visível/desbloqueável
+  // --- FIM DO CAMPO ADICIONADO ---
 }
 
 model ofertaUsuario {
@@ -217,27 +220,4 @@ model ofertaUsuario {
   data        DateTime @default(now())
 
   @@unique([usuarioid, ofertaid])
-}
-
-model conteudoUsuario {
-  id         BigInt   @id @default(autoincrement())
-  usuarioid  Int
-  usuario    usuario  @relation(fields: [usuarioid], references: [usuarioid])
-  conteudoid BigInt
-  conteudo   conteudo @relation(fields: [conteudoid], references: [conteudoid])
-  acessadoEm DateTime @default(now())
-
-  @@unique([usuarioid, conteudoid])
-}
-
-model eventoUsuario {
-  id        BigInt   @id @default(autoincrement())
-  usuarioid Int
-  usuario   usuario  @relation(fields: [usuarioid], references: [usuarioid])
-  eventoid  BigInt
-  evento    evento   @relation(fields: [eventoid], references: [eventoid])
-  inscrito  Boolean  @default(true)
-  data      DateTime @default(now())
-
-  @@unique([usuarioid, eventoid])
 }

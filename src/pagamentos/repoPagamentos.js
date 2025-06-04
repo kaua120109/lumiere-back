@@ -1,3 +1,4 @@
+// src/router/repo/repoPagamentos.js
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -7,19 +8,19 @@ export const pagamento = {
     try {
       const pagamentos = await prisma.pagamento.findMany({
         select: {
-          pagamentoid: true,
-          valor: true,
-          status: true,
-          data: true,
-          usuarioid: true,
-          formaPagamento: true,
-          transacao: true
+          pagamentoid: true, //
+          valor: true, //
+          status: true, //
+          data: true, //
+          usuarioid: true, //
+          formaPagamento: true, //
+          transacao: true //
         }
       });
-      return pagamentos;
+      return pagamentos; //
     } catch (error) {
-      console.error("Erro ao listar pagamentos:", error);
-      throw new Error("Erro ao listar pagamentos");
+      console.error("Erro ao listar pagamentos:", error); //
+      throw new Error("Erro ao listar pagamentos"); //
     }
   },
 
@@ -27,46 +28,46 @@ export const pagamento = {
     try {
       const novoPagamento = await prisma.pagamento.create({
         data: {
-          valor: dados.valor,
-          status: dados.status,
-          data: dados.data,
-          usuarioid: dados.usuarioid,
-          transacao: dados.transacao,
-          ordemId: dados.ordemId,
-          formaPagamento: dados.formaPagamento,
-          cartao: dados.cartao,
-          parcelas: dados.parcelas
+          valor: dados.valor, //
+          status: dados.status, //
+          data: dados.data, //
+          usuarioid: dados.usuarioid, //
+          transacao: dados.transacao, //
+          ordem: { connect: { ordemid: dados.ordemId } }, // CORREÇÃO: Conectar à ordem usando o ID da ordem
+          formaPagamento: dados.formaPagamento, //
+          cartao: dados.cartao, //
+          parcelas: dados.parcelas //
         }
       });
-      return novoPagamento;
+      return novoPagamento; //
     } catch (error) {
-      console.error("Erro ao criar pagamento:", error);
-      throw new Error("Erro ao criar pagamento");
+      console.error("Erro ao criar pagamento:", error); //
+      throw new Error("Erro ao criar pagamento"); //
     }
   },
 
   async atualizarPagamento(id, dados) {
     try {
       const pagamentoAtualizado = await prisma.pagamento.update({
-        where: { pagamentoid: id },
-        data: dados
+        where: { pagamentoid: id }, //
+        data: dados //
       });
-      return pagamentoAtualizado;
+      return pagamentoAtualizado; //
     } catch (error) {
-      console.error("Erro ao atualizar pagamento:", error);
-      throw new Error("Erro ao atualizar pagamento");
+      console.error("Erro ao atualizar pagamento:", error); //
+      throw new Error("Erro ao atualizar pagamento"); //
     }
   },
 
   async deletarPagamento(id) {
     try {
       await prisma.pagamento.delete({
-        where: { pagamentoid: id }
+        where: { pagamentoid: id } //
       });
-      return { success: true };
+      return { message: "Pagamento deletado com sucesso" }; //
     } catch (error) {
-      console.error("Erro ao deletar pagamento:", error);
-      throw new Error("Erro ao deletar pagamento");
+      console.error("Erro ao deletar pagamento:", error); //
+      throw new Error("Erro ao deletar pagamento"); //
     }
   }
 };
