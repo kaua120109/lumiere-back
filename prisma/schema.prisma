@@ -9,10 +9,10 @@ datasource db {
 
 model usuario {
   usuarioid      Int             @id @default(autoincrement())
-  usuario        String
+  usuario        String          @unique // Adicionado @unique para garantir unicidade
   nome           String
   cpf            String
-  email          String?
+  email          String          @unique // Adicionado @unique para garantir unicidade e removido opcional
   celular        String?
   senha          String
   endereco       endereco[]
@@ -25,10 +25,10 @@ model usuario {
   createdAt      DateTime        @default(now())
   admin          Boolean         @default(false)
   googleId       String?         @unique
-  // --- CAMPOS ADICIONADOS PARA O SISTEMA DE RECOMPENSAS ---
+  // --- CAMPOS DO SISTEMA DE RECOMPENSAS ---
   pontos         Int             @default(0) // Total de pontos acumulados pelo usuário
   nivelMembro    Int             @default(1) // Nível atual do membro (1, 2, 3, 4, etc.)
-  // --- FIM DOS CAMPOS ADICIONADOS ---
+  // --- FIM DOS CAMPOS DO SISTEMA DE RECOMPENSAS ---
 }
 
 model endereco {
@@ -205,9 +205,9 @@ model recompensa {
   pontos       Int // Pontos necessários para resgatar
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now())
-  // --- CAMPO ADICIONADO PARA O SISTEMA DE RECOMPENSAS ---
+  // --- CAMPO DO SISTEMA DE RECOMPENSAS ---
   nivelMinimo  Int      @default(1) // Nível mínimo do usuário para que esta recompensa seja visível/desbloqueável
-  // --- FIM DO CAMPO ADICIONADO ---
+  // --- FIM DO CAMPO DO SISTEMA DE RECOMPENSAS ---
 }
 
 model ofertaUsuario {
