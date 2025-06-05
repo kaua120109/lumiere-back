@@ -1,7 +1,9 @@
-// src/router/rotasUsuarios.js
 import { Router } from "express";
-import { usuario } from "./repoUsuarios.js"; 
+import { usuario } from "./repoUsuarios.js";
 import { verificarAutenticacao, verificarAdmin, verificarMembroAtivo } from "../middleware/auth.js";
+import { PrismaClient } from "@prisma/client"; // Importar PrismaClient aqui para a rota de ativação
+
+const prisma = new PrismaClient(); // Instanciar PrismaClient para uso na rota
 
 const router = Router();
 
@@ -19,10 +21,12 @@ router.post("/registrar", async (req, res) => {
     });
   } catch (error) {
     // Distinguir entre erros do lado do cliente (400) e do servidor (500)
-    const codigoStatus = error.message.includes("já está registrado") || error.message.includes("já está em uso") ? 400 : 500;
-    res.status(codigoStatus).json({
+    const errorMessage = error.message;
+    const statusCode = errorMessage.includes("já está registrado") || errorMessage.includes("já está em uso") ? 400 : 500;
+
+    res.status(statusCode).json({
       mensagem: "Falha ao registrar usuário.",
-      erro: error.message,
+      erro: errorMessage,
     });
   }
 });
@@ -34,14 +38,19 @@ router.post("/registrar", async (req, res) => {
  */
 router.post("/login", async (req, res) => {
   try {
-    const resultado = await usuario.autenticarUsuario(req.body);
+    // Renomear 'usuario' para 'identificador' para corresponder ao repositório
+    const { usuario: identificador, senha } = req.body;
+    const resultado = await usuario.autenticarUsuario({ identificador, senha });
+
     res.status(200).json({
       mensagem: "Login realizado com sucesso!",
       token: resultado.token,
       usuario: resultado.usuario, // Contém ehMembro e membroAtivo
     });
   } catch (error) {
-    res.status(401).json({ // 401 Não Autorizado para falhas de login
+    // Credenciais inválidas devem retornar 401
+    const statusCode = error.message.includes("Credenciais inválidas") ? 401 : 500;
+    res.status(statusCode).json({
       mensagem: "Falha na autenticação.",
       erro: error.message,
     });
@@ -72,6 +81,7 @@ router.get("/autenticado", verificarAutenticacao, (req, res) => {
  */
 router.get("/verificar-admin", verificarAutenticacao, verificarAdmin, async (req, res) => {
   try {
+    // req.usuario já contém os dados do token, incluindo 'admin'
     res.status(200).json({
       admin: req.usuario.admin,
       usuarioid: req.usuario.usuarioid,
@@ -112,6 +122,41 @@ router.get("/area-membro", verificarAutenticacao, verificarMembroAtivo, (req, re
   } catch (error) {
     console.error("Erro ao acessar área de membro:", error);
     res.status(403).json({ mensagem: "Acesso à área de membro negado." }); // 403 Proibido
+  }
+});
+
+/**
+ * @route POST /usuarios/ativar-membro
+ * @description Ativa ou cria um registro de membro para o usuário autenticado.
+ * @access Privado (Usuários Autenticados)
+ */
+router.post("/ativar-membro", verificarAutenticacao, async (req, res) => {
+  try {
+    const usuarioId = req.usuario.usuarioid;
+
+    // Usar upsert para criar ou atualizar o registro de membro
+    const membro = await prisma.membro.upsert({
+      where: { usuarioid: usuarioId },
+      update: { ativo: true }, // Apenas atualiza o status para ativo se já existir
+      create: {
+        usuarioid: usuarioId,
+        nome: req.usuario.nome, // Pega o nome do usuário do token
+        dataInicio: new Date(),
+        ativo: true,
+      },
+    });
+
+    res.status(200).json({
+      mensagem: "Membro ativado com sucesso!",
+      membro: {
+        id: membro.id, // Supondo que 'id' é o ID do membro
+        dataInicio: membro.dataInicio,
+        ativo: membro.ativo
+      }
+    });
+  } catch (error) {
+    console.error("[Rotas] Erro ao ativar membro:", error);
+    res.status(500).json({ mensagem: "Erro ao ativar membro. Tente novamente mais tarde." });
   }
 });
 
