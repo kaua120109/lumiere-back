@@ -1,3 +1,4 @@
+// lumiere-back/src/index.js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -12,8 +13,16 @@ import categoriasRouter from './Categoria/rotasCategorias.js';
 import historiasRouter from './Historias/rotasHistorias.js';
 import membroRouter from './membro/rotasMembro.js';
 import googleRouter from './GoogleLogin/rotasGoogle.js'; // Nova importação
-import recompensasRouter from './RecompensasMembro/rotaRecompensas.js'
+
+// IMPORTANTE:
+// renomeie a importação para ser mais clara sobre o que ela contém
+// O arquivo rotaRecompensas.js agora conterá tanto as rotas de recompensas quanto a de progresso.
+import recompensaEProgramaRouter from './RecompensasMembro/rotaRecompensas.js'; 
+
 import rotasEventos from './Eventos/rotasEventos.js'
+
+// REMOVA ESTA LINHA:
+// import rotasPrograma from './Programa/rotasPrograma.js';
 
 import './bigintExtension.js';
 
@@ -68,9 +77,23 @@ app.use('/categorias', categoriasRouter);
 app.use('/historias', historiasRouter);
 app.use('/membros', membroRouter); // Nova rota
 app.use('/logingg', googleRouter); // Nova rota para autenticação
-app.use('/recompensas', recompensasRouter);
+
+// Monta as rotas de recompensas E a rota de resgate.
+// A rota raiz '/' dentro de rotaRecompensas.js será '/recompensas' aqui.
+// A rota '/resgatar/:id' dentro de rotaRecompensas.js será '/recompensas/resgatar/:id' aqui.
+app.use('/recompensas', recompensaEProgramaRouter);
+
+// Monta a rota de progresso.
+// A rota '/progresso' dentro de rotaRecompensas.js será '/programa/progresso' aqui.
+app.use('/programa', recompensaEProgramaRouter);
+
 app.use('/eventos', rotasEventos);
+
+// REMOVA ESTA LINHA:
+// app.use('/programa', rotasPrograma);
+
 
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
