@@ -189,12 +189,16 @@ model conteudo {
 
 model evento {
   eventoid  BigInt   @id @default(autoincrement())
-  titulo    String
-  descricao String   @db.Text
+  nome      String   @db.VarChar(255)
+  descricao String?  @db.Text
   data      DateTime
-  local     String
-  imagem    String?  @db.Text
-  criadoEm  DateTime @default(now())
+  local     String   @db.VarChar(255)
+  imagem    String?  @db.VarChar(500)
+  categoria String?  @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("eventos")
 }
 
 model recompensa {
