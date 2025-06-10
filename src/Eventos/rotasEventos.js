@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eventos } from './eventos.js';
+import { eventos } from './eventos.js'; // Assegure-se de que o caminho está correto
 
 const router = Router();
 
@@ -14,143 +14,185 @@ router.use((req, res, next) => {
 // Middleware de tratamento de erros global
 const handleError = (error, req, res) => {
   console.error(`❌ Erro na rota ${req.method} ${req.path}:`, error);
-  
-  if (error.message.includes('banco de dados')) {
+
+  if (error.message.includes('banco de dados') || error.name === 'PrismaClientKnownRequestError' && error.code === 'P1001') {
     return res.status(503).json({
       error: 'Serviço indisponível',
-      message: 'Problemas de conexão com o banco de dados',
-      code: 'DATABASE_CONNECTION_ERROR'
+      message: 'Problemas de conexão com o banco de dados. Verifique se o banco está rodando e as variáveis de ambiente estão corretas.',
+      code: 'DATABASE_CONNECTION_ERROR',
+      details: error.message
     });
   }
-  
-  if (error.message.includes('não encontrada')) {
+
+  if (error.message.includes('não encontrada') || error.name === 'PrismaClientKnownRequestError' && error.code === 'P2021') {
     return res.status(500).json({
       error: 'Erro de configuração',
-      message: 'Tabela de eventos não encontrada. Execute as migrations.',
-      code: 'TABLE_NOT_FOUND'
+      message: 'Tabela de eventos não encontrada. Execute as migrations do Prisma.',
+      code: 'TABLE_NOT_FOUND',
+      details: error.message
     });
   }
-  
+
   if (error.message.includes('ID inválido')) {
     return res.status(400).json({
       error: 'Parâmetro inválido',
-      message: 'ID do evento deve ser um número válido',
-      code: 'INVALID_ID'
+      message: 'O ID fornecido não é um número válido ou está fora do formato esperado.',
+      code: 'INVALID_ID_PARAMETER'
     });
   }
-  
-  return res.status(500).json({
+
+  // Erros de validação personalizados
+  if (error.message.includes('Nome do evento é obrigatório') ||
+      error.message.includes('Data do evento é obrigatória') ||
+      error.message.includes('Local do evento é obrigatório') ||
+      error.message.includes('A data do evento deve ser futura') ||
+      error.message.includes('Distância em Km deve ser um número válido') ||
+      error.message.includes('Distância em Km não pode ser negativa')) {
+    return res.status(400).json({
+      error: 'Dados inválidos',
+      message: error.message,
+      code: 'INVALID_EVENT_DATA'
+    });
+  }
+
+  // Erros do Prisma relacionados a dados (ex: tipo de dado inválido)
+  if (error.name === 'PrismaClientValidationError') {
+    return res.status(400).json({
+      error: 'Erro de validação de dados',
+      message: 'Um ou mais campos contêm dados inválidos. Verifique os tipos de dados e os campos obrigatórios.',
+      code: 'PRISMA_VALIDATION_ERROR',
+      details: error.message
+    });
+  }
+
+  if (error.name === 'PrismaClientKnownRequestError' && error.code === 'P2025') {
+    // Este erro P2025 já é tratado na camada de serviço (eventos.js) para retornar null
+    // Mas, se por algum motivo ele for lançado aqui, tratamos como 404
+    return res.status(404).json({
+      error: 'Evento não encontrado',
+      message: `Nenhum evento encontrado com o ID especificado.`,
+      code: 'EVENT_NOT_FOUND_DB'
+    });
+  }
+
+  // Erro genérico
+  res.status(500).json({
     error: 'Erro interno do servidor',
-    message: error.message,
-    code: 'INTERNAL_SERVER_ERROR'
+    message: 'Ocorreu um erro inesperado ao processar a requisição.',
+    code: 'INTERNAL_SERVER_ERROR',
+    details: error.message // Inclui detalhes para depuração, mas pode ser removido em produção
   });
 };
 
-// Validação para criação/atualização de eventos
-const validateEventData = (req, res, next) => {
-  const { nome, data, local } = req.body;
-  
-  // Campos obrigatórios
-  const requiredFields = ['nome', 'data', 'local'];
-  const missingFields = requiredFields.filter(field => !req.body[field]);
-  
-  if (missingFields.length > 0) {
-    return res.status(400).json({
-      error: 'Dados inválidos',
-      message: `Campos obrigatórios faltando: ${missingFields.join(', ')}`,
-      code: 'MISSING_REQUIRED_FIELDS'
-    });
-  }
-  
-  // Validação de data
-  const dataEvento = new Date(data);
-  if (isNaN(dataEvento.getTime())) {
-    return res.status(400).json({
-      error: 'Data inválida',
-      message: 'Formato de data deve ser válido',
-      code: 'INVALID_DATE_FORMAT'
-    });
-  }
-  
-  // Validação de tamanho dos campos
-  if (nome.length > 255) {
-    return res.status(400).json({
-      error: 'Nome muito longo',
-      message: 'Nome do evento deve ter no máximo 255 caracteres',
-      code: 'NAME_TOO_LONG'
-    });
-  }
-  
-  next();
-};
-
-// Middleware para validar ID
+// Middleware para validar o ID do evento
 const validateId = (req, res, next) => {
   const { id } = req.params;
-  
-  if (!/^\d+$/.test(id)) {
+  // Express validator pode ser usado aqui, ou uma checagem manual
+  if (!id || isNaN(Number(id))) { // isNaN(Number(id)) verifica se é um número válido (incluindo string de números)
     return res.status(400).json({
-      error: 'ID inválido',
-      message: 'ID deve ser um número inteiro positivo',
+      error: 'Parâmetro inválido',
+      message: 'O ID do evento deve ser um número válido.',
       code: 'INVALID_ID_FORMAT'
     });
   }
-  
-  try {
-    BigInt(id);
-    next();
-  } catch (error) {
-    return res.status(400).json({
-      error: 'ID inválido',
-      message: 'ID fornecido é muito grande ou inválido',
-      code: 'INVALID_ID_RANGE'
-    });
-  }
+  next();
 };
 
-// ROTAS CORRIGIDAS:
+// Middleware para validar dados do evento
+const validateEventData = (req, res, next) => {
+  let { nome, descricao, data, local, imagem, km, categoria } = req.body;
 
-// Rota de teste de conexão
-router.get('/health', async (req, res) => {
+  // Campos obrigatórios
+  if (!nome || typeof nome !== 'string' || nome.trim() === '') {
+    return res.status(400).json({ message: 'Nome do evento é obrigatório.' });
+  }
+  req.body.nome = nome.trim(); // Limpa espaços em branco
+
+  if (!data) {
+    return res.status(400).json({ message: 'Data do evento é obrigatória.' });
+  }
+  const eventDate = new Date(data);
+  if (isNaN(eventDate.getTime())) {
+    return res.status(400).json({ message: 'Formato de data inválido.' });
+  }
+  // O frontend já envia em formato datetime-local, que Date() consegue parsear.
+  // No entanto, é bom garantir que seja um objeto Date antes de passar para o Prisma
+  req.body.data = eventDate;
+
+  if (!local || typeof local !== 'string' || local.trim() === '') {
+    return res.status(400).json({ message: 'Local do evento é obrigatório.' });
+  }
+  req.body.local = local.trim(); // Limpa espaços em branco
+
+  // Tratamento e validação do campo 'descricao'
+  if (descricao !== undefined && typeof descricao !== 'string') {
+    return res.status(400).json({ message: 'A descrição deve ser uma string.' });
+  }
+  req.body.descricao = descricao ? descricao.trim() : null; // Define como null se for string vazia
+
+  // Tratamento e validação do campo 'imagem'
+  if (imagem !== undefined && typeof imagem !== 'string') {
+    return res.status(400).json({ message: 'O campo imagem deve ser uma URL ou string.' });
+  }
+  req.body.imagem = imagem ? imagem.trim() : null; // Define como null se for string vazia
+
+  // NOVO: Tratamento do campo 'km'
+  if (km === '') {
+    req.body.km = null; // Converte string vazia para null
+  } else if (km !== undefined && km !== null) {
+    const parsedKm = parseFloat(km);
+    if (isNaN(parsedKm)) {
+      return res.status(400).json({ message: 'Distância em Km deve ser um número válido.' });
+    }
+    if (parsedKm < 0) {
+      return res.status(400).json({ message: 'Distância em Km não pode ser negativa.' });
+    }
+    req.body.km = parsedKm;
+  }
+  // Se km for undefined ou null, ele já estará no formato correto, então não fazemos nada.
+
+  // Tratamento e validação do campo 'categoria'
+  if (categoria !== undefined && typeof categoria !== 'string') {
+    return res.status(400).json({ message: 'A categoria deve ser uma string.' });
+  }
+  req.body.categoria = categoria ? categoria.trim() : null; // Define como null se for string vazia
+
+  next();
+};
+
+// Rotas de Eventos
+// Criar evento
+router.post('/', validateEventData, async (req, res) => {
   try {
-    await eventos.testarConexao();
-    res.status(200).json({
-      status: 'OK',
-      message: 'Conexão com banco de dados funcionando',
-      timestamp: new Date().toISOString()
-    });
+    console.log('✨ Criando novo evento...');
+    const novoEvento = await eventos.criarEvento(req.body);
+    console.log(`✅ Evento criado: ${novoEvento.nome}`);
+    res.status(201).json(novoEvento);
   } catch (error) {
     handleError(error, req, res);
   }
 });
 
-// Listar todos os eventos (CORRIGIDO - removendo /eventos duplicado)
+// Listar todos os eventos
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 Iniciando listagem de eventos...');
-    
-    const listaDeEventos = await eventos.listarEventos();
-    
-    console.log(`✅ Retornando ${listaDeEventos.length} eventos`);
-    
-    // Retorna diretamente o array para compatibilidade com o frontend
-    res.status(200).json(listaDeEventos);
-    
+    const todosEventos = await eventos.listarEventos();
+    console.log(`✅ ${todosEventos.length} eventos encontrados`);
+    res.status(200).json(todosEventos);
   } catch (error) {
     handleError(error, req, res);
   }
 });
 
-// Buscar evento por ID
+// Obter evento por ID
 router.get('/:id', validateId, async (req, res) => {
   try {
     const eventId = req.params.id;
     console.log(`🔍 Buscando evento ID: ${eventId}`);
-    
     const eventoEncontrado = await eventos.buscarEventoPorId(eventId);
 
     if (!eventoEncontrado) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Evento não encontrado',
         message: `Nenhum evento encontrado com ID: ${eventId}`,
         id: eventId,
@@ -160,22 +202,6 @@ router.get('/:id', validateId, async (req, res) => {
 
     console.log(`✅ Evento encontrado: ${eventoEncontrado.nome}`);
     res.status(200).json(eventoEncontrado);
-    
-  } catch (error) {
-    handleError(error, req, res);
-  }
-});
-
-// Criar novo evento (CORRIGIDO - removendo /eventos duplicado)
-router.post('/', validateEventData, async (req, res) => {
-  try {
-    console.log('➕ Criando novo evento:', req.body.nome);
-    
-    const novoEvento = await eventos.criarEvento(req.body);
-    
-    console.log(`✅ Evento criado com sucesso: ${novoEvento.nome}`);
-    res.status(201).json(novoEvento);
-    
   } catch (error) {
     handleError(error, req, res);
   }
@@ -186,11 +212,11 @@ router.put('/:id', validateId, validateEventData, async (req, res) => {
   try {
     const eventId = req.params.id;
     console.log(`📝 Atualizando evento ID: ${eventId}`);
-    
+
     const eventoAtualizado = await eventos.atualizarEvento(eventId, req.body);
 
     if (!eventoAtualizado) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Evento não encontrado',
         message: `Nenhum evento encontrado com ID: ${eventId} para atualização`,
         id: eventId,
@@ -200,7 +226,6 @@ router.put('/:id', validateId, validateEventData, async (req, res) => {
 
     console.log(`✅ Evento atualizado: ${eventoAtualizado.nome}`);
     res.status(200).json(eventoAtualizado);
-    
   } catch (error) {
     handleError(error, req, res);
   }
@@ -211,11 +236,11 @@ router.delete('/:id', validateId, async (req, res) => {
   try {
     const eventId = req.params.id;
     console.log(`🗑️ Deletando evento ID: ${eventId}`);
-    
+
     const eventoDeletado = await eventos.deletarEvento(eventId);
 
     if (!eventoDeletado) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Evento não encontrado',
         message: `Nenhum evento encontrado com ID: ${eventId} para exclusão`,
         id: eventId,
@@ -224,12 +249,7 @@ router.delete('/:id', validateId, async (req, res) => {
     }
 
     console.log(`✅ Evento deletado: ${eventoDeletado.nome}`);
-    res.status(200).json({ 
-      success: true,
-      message: "Evento deletado com sucesso",
-      data: eventoDeletado
-    });
-    
+    res.status(200).json(eventoDeletado);
   } catch (error) {
     handleError(error, req, res);
   }
