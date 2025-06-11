@@ -1,219 +1,265 @@
-// eventos.js
-import { PrismaClient } from "@prisma/client";
+// backend/src/Eventos/eventos.js
+import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'], // Adiciona logs para debug
-  errorFormat: 'pretty'
-});
+const prisma = new PrismaClient();
 
-// Fechar conexão ao terminar o processo
-process.on('beforeExit', async () => {
-  await prisma.$disconnect();
-});
-
-// Função para converter BigInt em string para JSON
-const serializeBigInt = (obj) => {
+// Função auxiliar para serializar BigInt para JSON
+// Necessário porque BigInt não é nativamente suportado por JSON.stringify
+function serializeBigInt(obj) {
   return JSON.parse(JSON.stringify(obj, (key, value) =>
-    typeof value === 'bigint' ? value.toString() : value
+    typeof value === 'bigint'
+      ? value.toString()
+      : value // Retorna a data no formato ISO para consistência
   ));
-};
-
-// Teste de conexão com o banco
-const testConnection = async () => {
-  try {
-    await prisma.$connect();
-    console.log('✅ Conexão com banco estabelecida com sucesso');
-  } catch (error) {
-    console.error('❌ Erro ao conectar com o banco:', error);
-    throw error;
-  }
-};
+}
 
 export const eventos = {
+  // Testar conexão com o banco de dados
   async testarConexao() {
-    return await testConnection();
+    try {
+      await prisma.$connect();
+      console.log('✨ Conexão com o banco de dados estabelecida com sucesso!');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao conectar ao banco de dados:', error);
+      return false;
+    } finally {
+      await prisma.$disconnect();
+    }
   },
 
+  // Listar todos os eventos
   async listarEventos() {
     try {
       console.log('🔍 Buscando eventos...');
-
-      const eventosEncontrados = await prisma.evento.findMany({
-        orderBy: { data: 'asc' },
-        select: {
-          eventoid: true,
-          nome: true,
-          data: true,
-          local: true,
-          descricao: true,
-          imagem: true,    // Adicionei imagem, categoria e km de volta, pois parecem úteis
-          categoria: true,
-          km: true,
-          // REMOVIDOS os campos que não existiam no schema.prisma:
-          // capacidadeMaxima: true,
-          // ingressosDisponiveis: true,
-          // preco: true,
-        }
-      });
-
-      console.log(`✅ Encontrados ${eventosEncontrados.length} eventos.`);
-      return serializeBigInt(eventosEncontrados);
-
+      const todosEventos = await prisma.evento.findMany();
+      console.log(`✅ ${todosEventos.length} eventos encontrados.`);
+      return serializeBigInt(todosEventos);
     } catch (error) {
-      console.error('❌ Erro ao buscar eventos:', error);
-      throw new Error(`Erro ao listar eventos: ${error.message}`);
+      console.error('❌ Erro ao listar eventos:', error);
+      throw new Error('Erro ao buscar eventos.');
     }
   },
 
-  async buscarEventoPorId(eventId) {
+  // Buscar evento por ID
+  async buscarEventoPorId(id) {
     try {
-      console.log(`🔍 Buscando evento ID: ${eventId}`);
-
-      const id = typeof eventId === 'string' ? BigInt(eventId) : eventId;
-
-      const eventoEncontrado = await prisma.evento.findUnique({
-        where: { eventoid: id },
-        select: {
-          eventoid: true,
-          nome: true,
-          data: true,
-          local: true,
-          descricao: true,
-          imagem: true,    // Adicionei imagem, categoria e km de volta
-          categoria: true,
-          km: true,
-          // REMOVIDOS os campos que não existiam no schema.prisma:
-          // capacidadeMaxima: true,
-          // ingressosDisponiveis: true,
-          // preco: true,
-        }
+      const eventoid = typeof id === 'string' ? BigInt(id) : id;
+      console.log(`🔍 Buscando evento ID: ${eventoid}...`);
+      const evento = await prisma.evento.findUnique({
+        where: { eventoid },
       });
-
-      if (!eventoEncontrado) {
-        console.log(`🔍 Evento ID: ${eventId} não encontrado.`);
+      if (!evento) {
+        console.log(`❕ Evento ID: ${eventoid} não encontrado.`);
         return null;
       }
-
-      console.log(`✅ Evento encontrado: ${eventoEncontrado.nome}`);
-      return serializeBigInt(eventoEncontrado);
-
+      console.log(`✅ Evento ID: ${eventoid} encontrado: ${evento.nome}`);
+      return serializeBigInt(evento);
     } catch (error) {
-      console.error(`❌ Erro ao buscar evento ID ${eventId}:`, error);
-      throw new Error(`Erro ao buscar evento por ID: ${error.message}`);
+      console.error(`❌ Erro ao buscar evento ID ${id}:`, error);
+      throw new Error('Erro ao buscar evento por ID.');
     }
   },
 
+  // Criar um novo evento
   async criarEvento(dadosEvento) {
     try {
       console.log('✨ Tentando criar novo evento...');
 
-      let dataEvento = new Date(dadosEvento.data);
-      if (isNaN(dataEvento.getTime())) {
-        throw new Error('Data do evento inválida. Formato esperado: AAAA-MM-DD ou formato de data ISO.');
+      // Preparar dados para criação, tratando strings vazias para null e convertendo tipos
+      const dadosParaCriar = {
+        nome: dadosEvento.nome,
+        descricao: dadosEvento.descricao === '' ? null : dadosEvento.descricao,
+        local: dadosEvento.local,
+        imagem: dadosEvento.imagem === '' ? null : dadosEvento.imagem,
+        categoria: dadosEvento.categoria === '' ? null : dadosEvento.categoria,
+      };
+
+      // Validação e conversão da data
+      if (dadosEvento.data) {
+        const dataEvento = new Date(dadosEvento.data);
+        if (isNaN(dataEvento.getTime())) {
+          throw new Error('Data do evento inválida. Formato esperado: AAAA-MM-DDTHH:MM ou formato de data ISO.');
+        }
+        dadosParaCriar.data = dataEvento;
+      } else {
+        throw new Error('Data do evento é obrigatória.'); // Data é obrigatória no seu schema
       }
 
-      // Garante que o preço seja um número de ponto flutuante, se aplicável
-      // Este tratamento foi mantido, mas se 'preco' não for adicionado ao schema,
-      // ele não será salvo no DB.
-      if (dadosEvento.preco !== undefined) {
-        dadosEvento.preco = parseFloat(dadosEvento.preco);
+      // Conversão de números com validação
+      if (dadosEvento.km !== undefined && dadosEvento.km !== null && dadosEvento.km !== '') {
+        const kmValue = parseFloat(dadosEvento.km);
+        if (isNaN(kmValue) || kmValue < 0) {
+          throw new Error('Distância em Km deve ser um número positivo.');
+        }
+        dadosParaCriar.km = kmValue;
+      } else {
+        dadosParaCriar.km = null;
       }
+
+      if (dadosEvento.capacidadeMaxima !== undefined && dadosEvento.capacidadeMaxima !== null && dadosEvento.capacidadeMaxima !== '') {
+        const capacidadeValue = parseInt(dadosEvento.capacidadeMaxima, 10);
+        if (isNaN(capacidadeValue) || capacidadeValue < 0) {
+          throw new Error('Capacidade Máxima deve ser um número inteiro positivo.');
+        }
+        dadosParaCriar.capacidadeMaxima = capacidadeValue;
+      } else {
+        dadosParaCriar.capacidadeMaxima = null;
+      }
+
+      if (dadosEvento.ingressosDisponiveis !== undefined && dadosEvento.ingressosDisponiveis !== null && dadosEvento.ingressosDisponiveis !== '') {
+        const ingressosValue = parseInt(dadosEvento.ingressosDisponiveis, 10);
+        if (isNaN(ingressosValue) || ingressosValue < 0) {
+          throw new Error('Ingressos Disponíveis deve ser um número inteiro positivo.');
+        }
+        dadosParaCriar.ingressosDisponiveis = ingressosValue;
+      } else {
+        dadosParaCriar.ingressosDisponiveis = null;
+      }
+
+      if (dadosEvento.preco !== undefined && dadosEvento.preco !== null && dadosEvento.preco !== '') {
+        const precoValue = parseFloat(dadosEvento.preco);
+        if (isNaN(precoValue) || precoValue < 0) {
+          throw new Error('Preço deve ser um número positivo.');
+        }
+        dadosParaCriar.preco = precoValue;
+      } else {
+        dadosParaCriar.preco = null;
+      }
+
+      console.log('Dados finais para criação no Prisma:', dadosParaCriar);
 
       const novoEvento = await prisma.evento.create({
-        data: {
-          nome: dadosEvento.nome,
-          data: dataEvento,
-          local: dadosEvento.local,
-          descricao: dadosEvento.descricao || null,
-          imagem: dadosEvento.imagem || null,     // Adicionei tratamento para imagem
-          categoria: dadosEvento.categoria || null, // Adicionei tratamento para categoria
-          km: dadosEvento.km || null,             // Adicionei tratamento para km
-          // Note: capacidadeMaxima, ingressosDisponiveis e preco não estão aqui,
-          // a menos que você os tenha adicionado ao schema.prisma
-          // capacidadeMaxima: dadosEvento.capacidadeMaxima || 0,
-          // ingressosDisponiveis: dadosEvento.ingressosDisponiveis || 0,
-          // preco: dadosEvento.preco || 0.0,
-        }
+        data: dadosParaCriar,
       });
-
-      console.log(`✅ Evento criado com sucesso: ${novoEvento.nome}`);
+      console.log(`✅ Evento criado: ${novoEvento.nome}`);
       return serializeBigInt(novoEvento);
-
     } catch (error) {
-      console.error('❌ Erro ao criar evento:', error);
+      console.error('❌ Erro ao criar evento:', error.message);
+      // Erro P2000: The provided value for the column is too long for the column's type.
+      if (error.code === 'P2000') {
+        throw new Error(`O valor fornecido é muito longo para uma das colunas. Verifique o tamanho de 'imagem' ou 'descrição'. Erro: ${error.meta?.column_name || 'coluna não especificada'}`);
+      }
+      // Erro P2002: Unique constraint failed on the {constraint}
       if (error.code === 'P2002') {
-        throw new Error(`Erro ao criar evento: Já existe um evento com o mesmo ${error.meta.target.join(', ')}.`);
+        throw new Error(`Já existe um evento com o(s) dado(s) ${error.meta.target.join(', ')} fornecido(s).`);
       }
       throw new Error(`Erro ao criar evento: ${error.message}`);
     }
   },
 
+  // Atualizar um evento existente
   async atualizarEvento(eventId, dadosAtualizacao) {
     try {
-      console.log(`📝 Atualizando evento ID: ${eventId}`);
-
+      console.log(`📝 Tentando atualizar evento ID: ${eventId} com dados recebidos:`, dadosAtualizacao);
       const id = typeof eventId === 'string' ? BigInt(eventId) : eventId;
 
-      // Validação e conversão da data se presente
-      if (dadosAtualizacao.data) {
-        const dataEvento = new Date(dadosAtualizacao.data);
-        if (isNaN(dataEvento.getTime())) {
-          throw new Error('Data inválida fornecida para atualização');
+      const dataToUpdate = {};
+
+      // TRATAMENTO DA DATA: Garante que a data é um objeto Date válido se for fornecida
+      // Permite que 'data' seja atualizada para null se for explicitamente enviada como '' ou null
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'data')) {
+        if (dadosAtualizacao.data === '' || dadosAtualizacao.data === null) {
+          dataToUpdate.data = null; // Se permitido pelo schema.prisma
+        } else {
+          const dataEvento = new Date(dadosAtualizacao.data);
+          if (isNaN(dataEvento.getTime())) {
+            throw new Error('Data do evento inválida. Formato esperado: AAAA-MM-DDTHH:MM ou formato de data ISO.');
+          }
+          dataToUpdate.data = dataEvento;
         }
-        dadosAtualizacao.data = dataEvento;
       }
 
-      // Garante que o preço seja um número de ponto flutuante, se aplicável
-      if (dadosAtualizacao.preco !== undefined) {
-        dadosAtualizacao.preco = parseFloat(dadosAtualizacao.preco);
+      // TRATAMENTO DOS CAMPOS GERAIS (String)
+      // Usamos Object.prototype.hasOwnProperty.call para verificar se a propriedade existe
+      // e tratamos strings vazias como null para campos opcionais no DB.
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'nome')) {
+        dataToUpdate.nome = dadosAtualizacao.nome;
       }
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'descricao')) {
+        dataToUpdate.descricao = dadosAtualizacao.descricao === '' ? null : dadosAtualizacao.descricao;
+      }
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'local')) {
+        dataToUpdate.local = dadosAtualizacao.local;
+      }
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'imagem')) {
+        dataToUpdate.imagem = dadosAtualizacao.imagem === '' ? null : dadosAtualizacao.imagem;
+      }
+      // TRATAMENTO ESPECÍFICO DA CATEGORIA
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'categoria')) {
+        dataToUpdate.categoria = (dadosAtualizacao.categoria === '' || dadosAtualizacao.categoria === null)
+          ? null
+          : String(dadosAtualizacao.categoria); // Garante que seja uma string
+      }
+
+      // TRATAMENTO DOS CAMPOS NUMÉRICOS (Float/Int)
+      // Convertemos para null se for string vazia ou null, caso contrário parseamos.
+      // E validamos se o resultado da parseamento é um número válido.
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'km')) {
+        dataToUpdate.km = (dadosAtualizacao.km === '' || dadosAtualizacao.km === null) ? null : parseFloat(dadosAtualizacao.km);
+        if (isNaN(dataToUpdate.km) && dataToUpdate.km !== null) {
+          throw new Error('Distância em Km deve ser um número válido.');
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'capacidadeMaxima')) {
+        dataToUpdate.capacidadeMaxima = (dadosAtualizacao.capacidadeMaxima === '' || dadosAtualizacao.capacidadeMaxima === null) ? null : parseInt(dadosAtualizacao.capacidadeMaxima, 10);
+        if (isNaN(dataToUpdate.capacidadeMaxima) && dataToUpdate.capacidadeMaxima !== null) {
+          throw new Error('Capacidade Máxima deve ser um número inteiro válido.');
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'ingressosDisponiveis')) {
+        dataToUpdate.ingressosDisponiveis = (dadosAtualizacao.ingressosDisponiveis === '' || dadosAtualizacao.ingressosDisponiveis === null) ? null : parseInt(dadosAtualizacao.ingressosDisponiveis, 10);
+        if (isNaN(dataToUpdate.ingressosDisponiveis) && dataToUpdate.ingressosDisponiveis !== null) {
+          throw new Error('Ingressos Disponíveis deve ser um número inteiro válido.');
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(dadosAtualizacao, 'preco')) {
+        dataToUpdate.preco = (dadosAtualizacao.preco === '' || dadosAtualizacao.preco === null) ? null : parseFloat(dadosAtualizacao.preco);
+        if (isNaN(dataToUpdate.preco) && dataToUpdate.preco !== null) {
+          throw new Error('Preço deve ser um número válido.');
+        }
+      }
+
+      console.log('Dados finais a serem atualizados no Prisma:', dataToUpdate);
 
       const eventoAtualizado = await prisma.evento.update({
         where: { eventoid: id },
-        data: dadosAtualizacao // Prisma é inteligente o suficiente para aplicar apenas os campos existentes
+        data: dataToUpdate
       });
 
-      console.log(`✅ Evento atualizado: ${eventoAtualizado.nome}`);
+      console.log(`✅ Evento atualizado com sucesso: ${eventoAtualizado.nome}`);
       return serializeBigInt(eventoAtualizado);
 
     } catch (error) {
-      console.error(`❌ Erro ao atualizar evento ${eventId}:`, error);
-
+      console.error(`❌ Erro ao atualizar evento ID ${eventId}:`, error.message);
+      // Erros específicos do Prisma
       if (error.code === 'P2025') {
-        console.log(`❌ Evento não encontrado para ID: ${eventId}`);
-        return null;
+        throw new Error(`Evento com ID ${eventId} não encontrado para atualização.`);
       }
-
       if (error.code === 'P2002') {
         throw new Error(`Erro ao atualizar evento: Já existe outro evento com o(s) mesmo(s) ${error.meta.target.join(', ')}.`);
       }
-
+      // Re-lança o erro original ou uma mensagem mais genérica
       throw new Error(`Erro ao atualizar evento: ${error.message}`);
     }
   },
 
-  async deletarEvento(eventId) {
+  // Deletar um evento
+  async deletarEvento(id) {
     try {
-      console.log(`🗑️ Deletando evento ID: ${eventId}`);
-
-      const id = typeof eventId === 'string' ? BigInt(eventId) : eventId;
-
+      const eventoid = typeof id === 'string' ? BigInt(id) : id;
+      console.log(`🔥 Tentando deletar evento ID: ${eventoid}...`);
       const eventoDeletado = await prisma.evento.delete({
-        where: { eventoid: id }
+        where: { eventoid },
       });
-
-      console.log(`✅ Evento deletado: ${eventoDeletado.nome}`);
+      console.log(`✅ Evento ID: ${eventoid} deletado com sucesso: ${eventoDeletado.nome}`);
       return serializeBigInt(eventoDeletado);
-
     } catch (error) {
-      console.error(`❌ Erro ao deletar evento ID ${eventId}:`, error);
-
+      console.error(`❌ Erro ao deletar evento ID ${id}:`, error.message);
       if (error.code === 'P2025') {
-        console.log(`❌ Evento não encontrado para ID: ${eventId}`);
-        return null;
+        throw new Error(`Evento com ID ${id} não encontrado para deleção.`);
       }
-
       throw new Error(`Erro ao deletar evento: ${error.message}`);
     }
-  }
+  },
 };

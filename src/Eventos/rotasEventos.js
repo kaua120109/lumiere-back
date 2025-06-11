@@ -1,245 +1,87 @@
-// rotasEventos.js
-import { Router } from 'express';
-import { eventos } from './eventos.js'; // Assegure-se de que o caminho está correto
+// backend/src/Eventos/rotasEventos.js
+import express from 'express';
+import { eventos } from './eventos.js'; // Verifique o caminho correto para o seu arquivo eventos.js
 
-const router = Router();
+const router = express.Router();
 
-// Middleware de log melhorado
-router.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  const clientIP = req.ip || req.connection.remoteAddress;
-  console.log(`[${timestamp}] ${req.method} ${req.path} - IP: ${clientIP}`);
-  next();
-});
+// Middleware para tratamento de erros centralizado nas rotas deste módulo
+const errorHandler = (err, req, res, next) => {
+  console.error('❌ Erro na rota:', req.originalUrl, err); // Loga o erro completo no console do servidor
 
-// Middleware de tratamento de erros global
-const handleError = (error, req, res) => {
-  console.error(`❌ Erro na rota ${req.method} ${req.path}:`, error);
+  // Define o status code com base no tipo de erro
+  let statusCode = 500; // Erro interno do servidor por padrão
+  let message = 'Ocorreu um erro interno no servidor.';
 
-  if (error.message.includes('banco de dados') || error.name === 'PrismaClientKnownRequestError' && error.code === 'P1001') {
-    return res.status(503).json({
-      error: 'Serviço indisponível',
-      message: 'Problemas de conexão com o banco de dados. Verifique se o banco está rodando e as variáveis de ambiente estão corretas.',
-      code: 'DATABASE_CONNECTION_ERROR',
-      details: error.message
-    });
+  if (err.message.includes('inválida') || err.message.includes('deve ser um número') || err.message.includes('O valor fornecido é muito longo') || err.message.includes('Já existe um evento com o(s) dado(s)')) {
+    statusCode = 400; // Bad Request - Erros de validação de dados fornecidos pelo cliente
+    message = err.message;
+  } else if (err.message.includes('não encontrado')) {
+    statusCode = 404; // Not Found - Recurso não encontrado
+    message = err.message;
   }
 
-  if (error.message.includes('não encontrada') || error.name === 'PrismaClientKnownRequestError' && error.code === 'P2021') {
-    return res.status(500).json({
-      error: 'Erro de configuração',
-      message: 'Tabela de eventos não encontrada. Execute as migrations do Prisma.',
-      code: 'TABLE_NOT_FOUND',
-      details: error.message
-    });
-  }
-
-  if (error.message.includes('ID inválido')) {
-    return res.status(400).json({
-      error: 'Parâmetro inválido',
-      message: 'O ID fornecido não é um número válido ou está fora do formato esperado.',
-      code: 'INVALID_ID_PARAMETER'
-    });
-  }
-
-  // Erros de validação personalizados
-  if (error.message.includes('Nome do evento é obrigatório') ||
-      error.message.includes('Data do evento é obrigatória') ||
-      error.message.includes('Local do evento é obrigatório') ||
-      error.message.includes('A data do evento deve ser futura') ||
-      error.message.includes('Distância em Km deve ser um número válido') ||
-      error.message.includes('Distância em Km não pode ser negativa')) {
-    return res.status(400).json({
-      error: 'Dados inválidos',
-      message: error.message,
-      code: 'INVALID_EVENT_DATA'
-    });
-  }
-
-  // Erros do Prisma relacionados a dados (ex: tipo de dado inválido)
-  if (error.name === 'PrismaClientValidationError') {
-    return res.status(400).json({
-      error: 'Erro de validação de dados',
-      message: 'Um ou mais campos contêm dados inválidos. Verifique os tipos de dados e os campos obrigatórios.',
-      code: 'PRISMA_VALIDATION_ERROR',
-      details: error.message
-    });
-  }
-
-  if (error.name === 'PrismaClientKnownRequestError' && error.code === 'P2025') {
-    // Este erro P2025 já é tratado na camada de serviço (eventos.js) para retornar null
-    // Mas, se por algum motivo ele for lançado aqui, tratamos como 404
-    return res.status(404).json({
-      error: 'Evento não encontrado',
-      message: `Nenhum evento encontrado com o ID especificado.`,
-      code: 'EVENT_NOT_FOUND_DB'
-    });
-  }
-
-  // Erro genérico
-  res.status(500).json({
-    error: 'Erro interno do servidor',
-    message: 'Ocorreu um erro inesperado ao processar a requisição.',
-    code: 'INTERNAL_SERVER_ERROR',
-    details: error.message // Inclui detalhes para depuração, mas pode ser removido em produção
-  });
+  // Responde ao cliente com o status code e a mensagem de erro
+  res.status(statusCode).json({ message });
 };
 
-// Middleware para validar o ID do evento
-const validateId = (req, res, next) => {
-  const { id } = req.params;
-  if (!id || isNaN(Number(id))) {
-    return res.status(400).json({
-      error: 'Parâmetro inválido',
-      message: 'O ID do evento deve ser um número válido.',
-      code: 'INVALID_ID_FORMAT'
-    });
-  }
-  next();
-};
 
-// Middleware para validar dados do evento
-const validateEventData = (req, res, next) => {
-  let { nome, descricao, data, local, imagem, km, categoria } = req.body;
-
-  if (!nome || typeof nome !== 'string' || nome.trim() === '') {
-    return res.status(400).json({ message: 'Nome do evento é obrigatório.' });
-  }
-  req.body.nome = nome.trim();
-
-  if (!data) {
-    return res.status(400).json({ message: 'Data do evento é obrigatória.' });
-  }
-  const eventDate = new Date(data);
-  if (isNaN(eventDate.getTime())) {
-    return res.status(400).json({ message: 'Formato de data inválido.' });
-  }
-  req.body.data = eventDate;
-
-  if (!local || typeof local !== 'string' || local.trim() === '') {
-    return res.status(400).json({ message: 'Local do evento é obrigatório.' });
-  }
-  req.body.local = local.trim();
-
-  if (descricao !== undefined && typeof descricao !== 'string') {
-    return res.status(400).json({ message: 'A descrição deve ser uma string.' });
-  }
-  req.body.descricao = descricao ? descricao.trim() : null;
-
-  if (imagem !== undefined && typeof imagem !== 'string') {
-    return res.status(400).json({ message: 'O campo imagem deve ser uma URL ou string.' });
-  }
-  req.body.imagem = imagem ? imagem.trim() : null;
-
-  if (km === '') {
-    req.body.km = null;
-  } else if (km !== undefined && km !== null) {
-    const parsedKm = parseFloat(km);
-    if (isNaN(parsedKm)) {
-      return res.status(400).json({ message: 'Distância em Km deve ser um número válido.' });
-    }
-    if (parsedKm < 0) {
-      return res.status(400).json({ message: 'Distância em Km não pode ser negativa.' });
-    }
-    req.body.km = parsedKm;
-  }
-
-  if (categoria !== undefined && typeof categoria !== 'string') {
-    return res.status(400).json({ message: 'A categoria deve ser uma string.' });
-  }
-  req.body.categoria = categoria ? categoria.trim() : null;
-
-  next();
-};
-
-// Rotas de Eventos
-router.post('/', validateEventData, async (req, res) => {
-  try {
-    console.log('✨ Criando novo evento...');
-    const novoEvento = await eventos.criarEvento(req.body);
-    console.log(`✅ Evento criado: ${novoEvento.nome}`);
-    res.status(201).json(novoEvento);
-  } catch (error) {
-    handleError(error, req, res);
-  }
-});
-
-router.get('/', async (req, res) => {
+// Rota para listar todos os eventos
+router.get('/', async (req, res, next) => {
   try {
     const todosEventos = await eventos.listarEventos();
-    console.log(`✅ ${todosEventos.length} eventos encontrados`);
-    res.status(200).json(todosEventos);
+    res.json(todosEventos);
   } catch (error) {
-    handleError(error, req, res);
+    next(error); // Passa o erro para o middleware de tratamento de erros
   }
 });
 
-router.get('/:id', validateId, async (req, res) => {
+// Rota para buscar evento por ID
+router.get('/:id', async (req, res, next) => {
+  try {
+    const evento = await eventos.buscarEventoPorId(req.params.id);
+    if (evento) {
+      res.json(evento);
+    } else {
+      res.status(404).json({ message: 'Evento não encontrado.' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Rota para criar um novo evento
+router.post('/', async (req, res, next) => {
+  try {
+    const novoEvento = await eventos.criarEvento(req.body);
+    res.status(201).json(novoEvento); // 201 Created
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Rota para atualizar um evento existente
+router.put('/:id', async (req, res, next) => {
   try {
     const eventId = req.params.id;
-    console.log(`🔍 Buscando evento ID: ${eventId}`);
-    const eventoEncontrado = await eventos.buscarEventoPorId(eventId);
-
-    if (!eventoEncontrado) {
-      return res.status(404).json({
-        error: 'Evento não encontrado',
-        message: `Nenhum evento encontrado com ID: ${eventId}`,
-        id: eventId,
-        code: 'EVENT_NOT_FOUND'
-      });
-    }
-
-    console.log(`✅ Evento encontrado: ${eventoEncontrado.nome}`);
-    res.status(200).json(eventoEncontrado);
+    const dadosAtualizacao = req.body;
+    const eventoAtualizado = await eventos.atualizarEvento(eventId, dadosAtualizacao);
+    res.json(eventoAtualizado);
   } catch (error) {
-    handleError(error, req, res);
+    next(error); // Passa o erro para o middleware de tratamento de erros
   }
 });
 
-router.put('/:id', validateId, validateEventData, async (req, res) => {
+// Rota para deletar um evento
+router.delete('/:id', async (req, res, next) => {
   try {
-    const eventId = req.params.id;
-    console.log(`📝 Atualizando evento ID: ${eventId}`);
-
-    const eventoAtualizado = await eventos.atualizarEvento(eventId, req.body);
-
-    if (!eventoAtualizado) {
-      return res.status(404).json({
-        error: 'Evento não encontrado',
-        message: `Nenhum evento encontrado com ID: ${eventId} para atualização`,
-        id: eventId,
-        code: 'EVENT_NOT_FOUND'
-      });
-    }
-
-    console.log(`✅ Evento atualizado: ${eventoAtualizado.nome}`);
-    res.status(200).json(eventoAtualizado);
+    const eventoDeletado = await eventos.deletarEvento(req.params.id);
+    res.json({ message: 'Evento deletado com sucesso!', evento: eventoDeletado });
   } catch (error) {
-    handleError(error, req, res);
+    next(error);
   }
 });
 
-router.delete('/:id', validateId, async (req, res) => {
-  try {
-    const eventId = req.params.id;
-    console.log(`🗑️ Deletando evento ID: ${eventId}`);
-
-    const eventoDeletado = await eventos.deletarEvento(eventId);
-
-    if (!eventoDeletado) {
-      return res.status(404).json({
-        error: 'Evento não encontrado',
-        message: `Nenhum evento encontrado com ID: ${eventId} para exclusão`,
-        id: eventId,
-        code: 'EVENT_NOT_FOUND'
-      });
-    }
-
-    console.log(`✅ Evento deletado: ${eventoDeletado.nome}`);
-    res.status(200).json(eventoDeletado);
-  } catch (error) {
-    handleError(error, req, res);
-  }
-});
+// Aplica o middleware de tratamento de erros no final das rotas
+router.use(errorHandler);
 
 export default router;
