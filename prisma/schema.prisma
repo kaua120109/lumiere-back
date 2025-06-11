@@ -188,16 +188,19 @@ model conteudo {
 }
 
 model evento {
-  eventoid  BigInt   @id @default(autoincrement())
-  nome      String   @db.VarChar(255)
-  descricao String?  @db.Text
-  data      DateTime
-  local     String   @db.VarChar(255)
-  imagem    String?  @db.VarChar(500)
-  categoria String?  @db.VarChar(50)
-  km        Float? // Distância em km, se aplicável
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  eventoid             BigInt   @id @default(autoincrement())
+  nome                 String   @db.VarChar(255)
+  descricao            String?  @db.Text
+  data                 DateTime
+  local                String   @db.VarChar(255)
+  imagem               String?  @db.Text
+  categoria            String?  @db.VarChar(50)
+  km                   Float? // Distância em km, se aplicável
+  capacidadeMaxima     Int? // Adicionado: Capacidade máxima do evento
+  ingressosDisponiveis Int? // Adicionado: Número de ingressos disponíveis
+  preco                Float? // Adicionado: Preço do ingresso/evento
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   @@map("eventos")
 }

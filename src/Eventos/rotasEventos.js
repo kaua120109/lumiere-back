@@ -1,3 +1,4 @@
+// rotasEventos.js
 import { Router } from 'express';
 import { eventos } from './eventos.js'; // Assegure-se de que o caminho está correto
 
@@ -87,8 +88,7 @@ const handleError = (error, req, res) => {
 // Middleware para validar o ID do evento
 const validateId = (req, res, next) => {
   const { id } = req.params;
-  // Express validator pode ser usado aqui, ou uma checagem manual
-  if (!id || isNaN(Number(id))) { // isNaN(Number(id)) verifica se é um número válido (incluindo string de números)
+  if (!id || isNaN(Number(id))) {
     return res.status(400).json({
       error: 'Parâmetro inválido',
       message: 'O ID do evento deve ser um número válido.',
@@ -102,11 +102,10 @@ const validateId = (req, res, next) => {
 const validateEventData = (req, res, next) => {
   let { nome, descricao, data, local, imagem, km, categoria } = req.body;
 
-  // Campos obrigatórios
   if (!nome || typeof nome !== 'string' || nome.trim() === '') {
     return res.status(400).json({ message: 'Nome do evento é obrigatório.' });
   }
-  req.body.nome = nome.trim(); // Limpa espaços em branco
+  req.body.nome = nome.trim();
 
   if (!data) {
     return res.status(400).json({ message: 'Data do evento é obrigatória.' });
@@ -115,30 +114,25 @@ const validateEventData = (req, res, next) => {
   if (isNaN(eventDate.getTime())) {
     return res.status(400).json({ message: 'Formato de data inválido.' });
   }
-  // O frontend já envia em formato datetime-local, que Date() consegue parsear.
-  // No entanto, é bom garantir que seja um objeto Date antes de passar para o Prisma
   req.body.data = eventDate;
 
   if (!local || typeof local !== 'string' || local.trim() === '') {
     return res.status(400).json({ message: 'Local do evento é obrigatório.' });
   }
-  req.body.local = local.trim(); // Limpa espaços em branco
+  req.body.local = local.trim();
 
-  // Tratamento e validação do campo 'descricao'
   if (descricao !== undefined && typeof descricao !== 'string') {
     return res.status(400).json({ message: 'A descrição deve ser uma string.' });
   }
-  req.body.descricao = descricao ? descricao.trim() : null; // Define como null se for string vazia
+  req.body.descricao = descricao ? descricao.trim() : null;
 
-  // Tratamento e validação do campo 'imagem'
   if (imagem !== undefined && typeof imagem !== 'string') {
     return res.status(400).json({ message: 'O campo imagem deve ser uma URL ou string.' });
   }
-  req.body.imagem = imagem ? imagem.trim() : null; // Define como null se for string vazia
+  req.body.imagem = imagem ? imagem.trim() : null;
 
-  // NOVO: Tratamento do campo 'km'
   if (km === '') {
-    req.body.km = null; // Converte string vazia para null
+    req.body.km = null;
   } else if (km !== undefined && km !== null) {
     const parsedKm = parseFloat(km);
     if (isNaN(parsedKm)) {
@@ -149,19 +143,16 @@ const validateEventData = (req, res, next) => {
     }
     req.body.km = parsedKm;
   }
-  // Se km for undefined ou null, ele já estará no formato correto, então não fazemos nada.
 
-  // Tratamento e validação do campo 'categoria'
   if (categoria !== undefined && typeof categoria !== 'string') {
     return res.status(400).json({ message: 'A categoria deve ser uma string.' });
   }
-  req.body.categoria = categoria ? categoria.trim() : null; // Define como null se for string vazia
+  req.body.categoria = categoria ? categoria.trim() : null;
 
   next();
 };
 
 // Rotas de Eventos
-// Criar evento
 router.post('/', validateEventData, async (req, res) => {
   try {
     console.log('✨ Criando novo evento...');
@@ -173,7 +164,6 @@ router.post('/', validateEventData, async (req, res) => {
   }
 });
 
-// Listar todos os eventos
 router.get('/', async (req, res) => {
   try {
     const todosEventos = await eventos.listarEventos();
@@ -184,7 +174,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Obter evento por ID
 router.get('/:id', validateId, async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -207,7 +196,6 @@ router.get('/:id', validateId, async (req, res) => {
   }
 });
 
-// Atualizar evento
 router.put('/:id', validateId, validateEventData, async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -231,7 +219,6 @@ router.put('/:id', validateId, validateEventData, async (req, res) => {
   }
 });
 
-// Deletar evento
 router.delete('/:id', validateId, async (req, res) => {
   try {
     const eventId = req.params.id;

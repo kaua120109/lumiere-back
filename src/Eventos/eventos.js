@@ -1,3 +1,4 @@
+// eventos.js
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({
@@ -36,41 +37,30 @@ export const eventos = {
   async listarEventos() {
     try {
       console.log('🔍 Buscando eventos...');
-      
-      // Testa a conexão primeiro
-      await prisma.$connect();
-      
+
       const eventosEncontrados = await prisma.evento.findMany({
         orderBy: { data: 'asc' },
         select: {
           eventoid: true,
           nome: true,
-          descricao: true,
           data: true,
           local: true,
-          imagem: true,
-          categoria: true
+          descricao: true,
+          imagem: true,    // Adicionei imagem, categoria e km de volta, pois parecem úteis
+          categoria: true,
+          km: true,
+          // REMOVIDOS os campos que não existiam no schema.prisma:
+          // capacidadeMaxima: true,
+          // ingressosDisponiveis: true,
+          // preco: true,
         }
       });
 
-      console.log(`✅ ${eventosEncontrados.length} eventos encontrados`);
-      
-      // Serializa BigInt para evitar erros de JSON
+      console.log(`✅ Encontrados ${eventosEncontrados.length} eventos.`);
       return serializeBigInt(eventosEncontrados);
-      
+
     } catch (error) {
-      console.error('❌ Erro ao listar eventos:', error);
-      
-      // Verifica se é erro de conexão
-      if (error.code === 'P1001') {
-        throw new Error('Não foi possível conectar ao banco de dados. Verifique se o banco está rodando.');
-      }
-      
-      // Verifica se é erro de tabela não encontrada
-      if (error.code === 'P2021') {
-        throw new Error('Tabela "evento" não encontrada. Execute as migrations do Prisma.');
-      }
-      
+      console.error('❌ Erro ao buscar eventos:', error);
       throw new Error(`Erro ao listar eventos: ${error.message}`);
     }
   },
@@ -78,108 +68,126 @@ export const eventos = {
   async buscarEventoPorId(eventId) {
     try {
       console.log(`🔍 Buscando evento ID: ${eventId}`);
-      
-      // Converte para BigInt se necessário
+
       const id = typeof eventId === 'string' ? BigInt(eventId) : eventId;
-      
+
       const eventoEncontrado = await prisma.evento.findUnique({
         where: { eventoid: id },
         select: {
           eventoid: true,
           nome: true,
-          descricao: true,
           data: true,
           local: true,
-          imagem: true,
+          descricao: true,
+          imagem: true,    // Adicionei imagem, categoria e km de volta
           categoria: true,
-          createdAt: true,
-          updatedAt: true
+          km: true,
+          // REMOVIDOS os campos que não existiam no schema.prisma:
+          // capacidadeMaxima: true,
+          // ingressosDisponiveis: true,
+          // preco: true,
         }
       });
 
-      if (eventoEncontrado) {
-        console.log(`✅ Evento encontrado: ${eventoEncontrado.nome}`);
-        return serializeBigInt(eventoEncontrado);
+      if (!eventoEncontrado) {
+        console.log(`🔍 Evento ID: ${eventId} não encontrado.`);
+        return null;
       }
-      
-      console.log(`❌ Evento não encontrado para ID: ${eventId}`);
-      return null;
-      
+
+      console.log(`✅ Evento encontrado: ${eventoEncontrado.nome}`);
+      return serializeBigInt(eventoEncontrado);
+
     } catch (error) {
-      console.error(`❌ Erro ao buscar evento ${eventId}:`, error);
-      throw new Error(`Erro ao buscar evento: ${error.message}`);
+      console.error(`❌ Erro ao buscar evento ID ${eventId}:`, error);
+      throw new Error(`Erro ao buscar evento por ID: ${error.message}`);
     }
   },
 
-  async criarEvento(eventData) {
+  async criarEvento(dadosEvento) {
     try {
-      console.log('➕ Criando novo evento:', eventData.nome);
-      
-      // Validação adicional
-      if (!eventData.nome || !eventData.data || !eventData.local) {
-        throw new Error('Dados incompletos: nome, data e local são obrigatórios');
+      console.log('✨ Tentando criar novo evento...');
+
+      let dataEvento = new Date(dadosEvento.data);
+      if (isNaN(dataEvento.getTime())) {
+        throw new Error('Data do evento inválida. Formato esperado: AAAA-MM-DD ou formato de data ISO.');
       }
 
-      // Validação de data
-      const dataEvento = new Date(eventData.data);
-      if (isNaN(dataEvento.getTime())) {
-        throw new Error('Data inválida fornecida');
+      // Garante que o preço seja um número de ponto flutuante, se aplicável
+      // Este tratamento foi mantido, mas se 'preco' não for adicionado ao schema,
+      // ele não será salvo no DB.
+      if (dadosEvento.preco !== undefined) {
+        dadosEvento.preco = parseFloat(dadosEvento.preco);
       }
 
       const novoEvento = await prisma.evento.create({
         data: {
-          ...eventData,
-          data: dataEvento
+          nome: dadosEvento.nome,
+          data: dataEvento,
+          local: dadosEvento.local,
+          descricao: dadosEvento.descricao || null,
+          imagem: dadosEvento.imagem || null,     // Adicionei tratamento para imagem
+          categoria: dadosEvento.categoria || null, // Adicionei tratamento para categoria
+          km: dadosEvento.km || null,             // Adicionei tratamento para km
+          // Note: capacidadeMaxima, ingressosDisponiveis e preco não estão aqui,
+          // a menos que você os tenha adicionado ao schema.prisma
+          // capacidadeMaxima: dadosEvento.capacidadeMaxima || 0,
+          // ingressosDisponiveis: dadosEvento.ingressosDisponiveis || 0,
+          // preco: dadosEvento.preco || 0.0,
         }
       });
 
       console.log(`✅ Evento criado com sucesso: ${novoEvento.nome}`);
       return serializeBigInt(novoEvento);
-      
+
     } catch (error) {
       console.error('❌ Erro ao criar evento:', error);
-      
-      // Verifica erros específicos do Prisma
       if (error.code === 'P2002') {
-        throw new Error('Já existe um evento com esses dados únicos');
+        throw new Error(`Erro ao criar evento: Já existe um evento com o mesmo ${error.meta.target.join(', ')}.`);
       }
-      
       throw new Error(`Erro ao criar evento: ${error.message}`);
     }
   },
 
-  async atualizarEvento(eventId, updateData) {
+  async atualizarEvento(eventId, dadosAtualizacao) {
     try {
       console.log(`📝 Atualizando evento ID: ${eventId}`);
-      
+
       const id = typeof eventId === 'string' ? BigInt(eventId) : eventId;
-      
-      // Prepara os dados para atualização
-      const dadosAtualizacao = { ...updateData };
-      if (updateData.data) {
-        const dataEvento = new Date(updateData.data);
+
+      // Validação e conversão da data se presente
+      if (dadosAtualizacao.data) {
+        const dataEvento = new Date(dadosAtualizacao.data);
         if (isNaN(dataEvento.getTime())) {
           throw new Error('Data inválida fornecida para atualização');
         }
         dadosAtualizacao.data = dataEvento;
       }
 
+      // Garante que o preço seja um número de ponto flutuante, se aplicável
+      if (dadosAtualizacao.preco !== undefined) {
+        dadosAtualizacao.preco = parseFloat(dadosAtualizacao.preco);
+      }
+
       const eventoAtualizado = await prisma.evento.update({
         where: { eventoid: id },
-        data: dadosAtualizacao
+        data: dadosAtualizacao // Prisma é inteligente o suficiente para aplicar apenas os campos existentes
       });
 
       console.log(`✅ Evento atualizado: ${eventoAtualizado.nome}`);
       return serializeBigInt(eventoAtualizado);
-      
+
     } catch (error) {
       console.error(`❌ Erro ao atualizar evento ${eventId}:`, error);
-      
+
       if (error.code === 'P2025') {
         console.log(`❌ Evento não encontrado para ID: ${eventId}`);
         return null;
       }
-      
+
+      if (error.code === 'P2002') {
+        throw new Error(`Erro ao atualizar evento: Já existe outro evento com o(s) mesmo(s) ${error.meta.target.join(', ')}.`);
+      }
+
       throw new Error(`Erro ao atualizar evento: ${error.message}`);
     }
   },
@@ -187,24 +195,24 @@ export const eventos = {
   async deletarEvento(eventId) {
     try {
       console.log(`🗑️ Deletando evento ID: ${eventId}`);
-      
+
       const id = typeof eventId === 'string' ? BigInt(eventId) : eventId;
-      
+
       const eventoDeletado = await prisma.evento.delete({
         where: { eventoid: id }
       });
 
       console.log(`✅ Evento deletado: ${eventoDeletado.nome}`);
       return serializeBigInt(eventoDeletado);
-      
+
     } catch (error) {
-      console.error(`❌ Erro ao deletar evento ${eventId}:`, error);
-      
+      console.error(`❌ Erro ao deletar evento ID ${eventId}:`, error);
+
       if (error.code === 'P2025') {
         console.log(`❌ Evento não encontrado para ID: ${eventId}`);
         return null;
       }
-      
+
       throw new Error(`Erro ao deletar evento: ${error.message}`);
     }
   }
