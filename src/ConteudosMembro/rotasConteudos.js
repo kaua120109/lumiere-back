@@ -7,6 +7,18 @@ import { verificarAutenticacao, verificarAdmin, verificarMembroAtivo } from '../
 
 const router = Router();
 
+// Middleware de log para debug do body recebido
+router.use((req, res, next) => {
+  if (req.method === 'POST' || req.method === 'PUT') {
+    try {
+      console.log('BODY RECEBIDO:', JSON.stringify(req.body).substring(0, 500));
+    } catch {
+      console.log('BODY RECEBIDO: [erro ao serializar]');
+    }
+  }
+  next();
+});
+
 // Função utilitária para tratamento de erros
 const handleRouteError = (res, error, defaultMessage, statusCode = 500) => {
   console.error(`Erro na rota:`, error.message || error);

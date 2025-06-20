@@ -14,6 +14,7 @@ export class ConteudoService {
    * @throws {Error} Se houver dados inválidos ou falha na criação.
    */
   static async criarConteudo(dados) {
+    console.log('DADOS RECEBIDOS PARA CRIAR CONTEÚDO:', { ...dados, imagem: dados.imagem?.substring?.(0, 100) });
     const { titulo, tipo, descricao, url, imagem, duracao, ativo = true } = dados;
 
     if (!titulo || !tipo || !url) {
@@ -23,6 +24,7 @@ export class ConteudoService {
       throw new Error(`Tipo de conteúdo inválido. Tipos permitidos: ${TIPOS_CONTEUDO_VALIDOS.join(', ')}.`);
     }
 
+    // Salvar exatamente o valor recebido em 'imagem' (base64)
     try {
       return await prisma.conteudo.create({
         data: {
@@ -30,9 +32,9 @@ export class ConteudoService {
           tipo: tipo.toLowerCase(),
           descricao,
           url,
-          imagem,
+          imagem, // Salva exatamente o que veio do frontend
           duracao,
-          ativo, // Permite definir se o conteúdo está ativo ou não
+          ativo,
         },
       });
     } catch (error) {
@@ -97,6 +99,7 @@ export class ConteudoService {
    * @throws {Error} Se houver dados inválidos ou falha na atualização.
    */
   static async atualizarConteudo(id, dados) {
+    console.log('DADOS RECEBIDOS PARA ATUALIZAR CONTEÚDO:', { ...dados, imagem: dados.imagem?.substring?.(0, 100) });
     const { titulo, tipo, descricao, url, imagem, duracao, ativo } = dados;
 
     if (isNaN(id)) {
@@ -106,6 +109,7 @@ export class ConteudoService {
       throw new Error(`Tipo de conteúdo inválido. Tipos permitidos: ${TIPOS_CONTEUDO_VALIDOS.join(', ')}.`);
     }
 
+    // Salvar exatamente o valor recebido em 'imagem' (base64)
     try {
       return await prisma.conteudo.update({
         where: { conteudoid: id },
@@ -114,7 +118,7 @@ export class ConteudoService {
           tipo: tipo ? tipo.toLowerCase() : undefined,
           descricao,
           url,
-          imagem,
+          imagem, // Salva exatamente o que veio do frontend
           duracao,
           ativo,
         },
