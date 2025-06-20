@@ -205,4 +205,23 @@ router.get('/membros/interacao/:conteudoid', verificarAutenticacao, async (req, 
   }
 });
 
+// Rota para registrar visualização de conteúdo (marcar como visualizado)
+router.post('/membros/conteudos/:conteudoid/visualizado', verificarAutenticacao, verificarMembroAtivo, async (req, res) => {
+  try {
+    const usuarioid = req.usuario?.usuarioid;
+    const { conteudoid } = req.params;
+    if (!usuarioid) {
+      return handleRouteError(res, new Error('Usuário não autenticado.'), 'Token de autenticação inválido.', 401);
+    }
+    // Marca como visualizado (progresso pode ser mantido ou não alterado)
+    const interacao = await ConteudoService.registrarInteracao(usuarioid, conteudoid, true);
+    res.status(200).json({
+      message: 'Conteúdo marcado como visualizado!',
+      interacao: interacao
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'Não foi possível marcar como visualizado.', 400);
+  }
+});
+
 export default router;
