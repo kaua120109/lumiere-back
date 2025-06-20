@@ -202,7 +202,6 @@ export const usuario = {
           pontos: true,
           nivelMembro: true,
           email: true,
-          membro: true, // Incluir dados de membro
         },
       });
 
@@ -256,6 +255,9 @@ export const usuario = {
    */
   async gerarNovoTokenComDadosAtualizados(usuarioId) {
     try {
+      console.log('=== GERANDO NOVO TOKEN ===');
+      console.log('Usuarioid:', usuarioId);
+      
       const usuarioAtualizado = await prisma.usuario.findUnique({
         where: { usuarioid: usuarioId },
         include: {
@@ -273,6 +275,8 @@ export const usuario = {
         }
       });
 
+      console.log('Usuário encontrado:', usuarioAtualizado);
+
       if (!usuarioAtualizado) {
         throw new Error("Usuário não encontrado para gerar novo token.");
       }
@@ -282,6 +286,8 @@ export const usuario = {
       const membroEhAtivo = ehMembro
         ? usuarioAtualizado.membro.ativo && (!usuarioAtualizado.membro.dataExpiracao || new Date(usuarioAtualizado.membro.dataExpiracao) > new Date())
         : false;
+
+      console.log('Status de membro:', { ehMembro, membroEhAtivo });
 
       // Payload do token JWT com dados atualizados
       const payloadToken = {
@@ -295,7 +301,11 @@ export const usuario = {
         membroAtivo: membroEhAtivo,
       };
 
+      console.log('Payload do token:', payloadToken);
+
       const novoToken = createToken(payloadToken);
+
+      console.log('Token gerado com sucesso');
 
       return {
         token: novoToken,

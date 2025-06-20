@@ -9,26 +9,33 @@ datasource db {
 
 model usuario {
   usuarioid      Int             @id @default(autoincrement())
-  usuario        String          @unique // Adicionado @unique para garantir unicidade
+  usuario        String          @unique
   nome           String
-  cpf            String
-  email          String          @unique // Adicionado @unique para garantir unicidade e removido opcional
+  cpf            String?
+  email          String          @unique
   celular        String?
   senha          String
   endereco       endereco[]
   ordens         ordem[]
   historias      historia[]
   comentarios    comentario[]
-  membro         membro?
   pagamentos     pagamento[]
   ofertaUsuarios ofertaUsuario[]
   createdAt      DateTime        @default(now())
   admin          Boolean         @default(false)
   googleId       String?         @unique
-  // --- CAMPOS DO SISTEMA DE RECOMPENSAS ---
-  pontos         Int             @default(0) // Total de pontos acumulados pelo usuário
-  nivelMembro    Int             @default(1) // Nível atual do membro (1, 2, 3, 4, etc.)
-  // --- FIM DOS CAMPOS DO SISTEMA DE RECOMPENSAS ---
+
+  // --- Campos de Membro Movidos para Usuario ---
+  ehMembro         Boolean   @default(false)
+  dataInicioMembro DateTime? // Adicionado: Data de início da associação como membro
+  dataExpiracao    DateTime? // Adicionado: Data de expiração da associação como membro
+  membroAtivo      Boolean   @default(false) // Indica se o status de membro está ativo (pode ser inativo por expiração, etc.)
+  // --- Fim dos Campos de Membro Movidos ---
+
+  pontos      Int @default(0)
+  nivelMembro Int @default(1)
+
+  ConteudoUsuario ConteudoUsuario[]
 }
 
 model endereco {
@@ -144,19 +151,6 @@ model comentario {
   updatedAt    DateTime @default(now()) @updatedAt
 }
 
-model membro {
-  membroid      BigInt    @id @default(autoincrement())
-  usuarioid     Int       @unique
-  nome          String
-  usuario       usuario   @relation(fields: [usuarioid], references: [usuarioid])
-  dataInicio    DateTime  @default(now())
-  dataExpiracao DateTime?
-  ativo         Boolean   @default(true)
-  beneficios    String?   @db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-}
-
 model promocao {
   promocaoid BigInt   @id @default(autoincrement())
   codigo     String   @unique
@@ -178,13 +172,32 @@ model oferta {
 }
 
 model conteudo {
-  conteudoid BigInt   @id @default(autoincrement())
-  titulo     String
-  tipo       String // vídeo, treino, dica...
-  descricao  String   @db.Text
-  url        String
-  imagem     String?  @db.Text
-  createdAt  DateTime @default(now())
+  conteudoid      BigInt            @id @default(autoincrement())
+  titulo          String
+  tipo            String // video, treino, dica, podcast, artigo (ou outros tipos que você definir)
+  descricao       String            @db.Text
+  url             String // URL principal do conteúdo (ex: link do YouTube, Vimeo, artigo)
+  imagem          String?           @db.Text // URL da thumbnail (geralmente gerada do vídeo, ou uma imagem sua)
+  createdAt       DateTime          @default(now())
+  duracao         String? // Ex: "30 min", "1h 15m" (Opcional, para exibir no frontend)
+  ativo           Boolean           @default(true) // Se o conteúdo está disponível para membros
+  ConteudoUsuario ConteudoUsuario[] // Relação para a tabela de junção de interação com usuário
+}
+
+model ConteudoUsuario {
+  usuarioid   Int // Deve ser do mesmo tipo que o id do usuário (Int, como você tem)
+  conteudoid  BigInt
+  visualizado Boolean @default(false)
+  favoritado  Boolean @default(false)
+  progresso   Int     @default(0) // 0-100 para progresso do vídeo/treino
+
+  // Adicionado para rastrear a última interação/atribuição
+  assignadoEm DateTime @default(now())
+
+  usuario  usuario  @relation(fields: [usuarioid], references: [usuarioid])
+  conteudo conteudo @relation(fields: [conteudoid], references: [conteudoid])
+
+  @@id([usuarioid, conteudoid]) // Chave primária composta para garantir unicidade da interação
 }
 
 model evento {

@@ -12,17 +12,11 @@ import produtosRouter from './Produto/rotasProdutos.js';
 import categoriasRouter from './Categoria/rotasCategorias.js';
 import historiasRouter from './Historias/rotasHistorias.js';
 import membroRouter from './membro/rotasMembro.js';
-import googleRouter from './GoogleLogin/rotasGoogle.js'; // Nova importação
-
-// IMPORTANTE:
-// renomeie a importação para ser mais clara sobre o que ela contém
-// O arquivo rotaRecompensas.js agora conterá tanto as rotas de recompensas quanto a de progresso.
+import googleRouter from './GoogleLogin/rotasGoogle.js';
 import recompensaEProgramaRouter from './RecompensasMembro/rotaRecompensas.js'; 
-
 import rotasEventos from './Eventos/rotasEventos.js'
+import conteudosRouter from './ConteudosMembro/rotasConteudos.js'; // Caminho de importação correto
 
-// REMOVA ESTA LINHA:
-// import rotasPrograma from './Programa/rotasPrograma.js';
 
 import './bigintExtension.js';
 
@@ -75,23 +69,12 @@ app.use('/usuarios', usuarioRouter);
 app.use('/produtos', produtosRouter);
 app.use('/categorias', categoriasRouter); 
 app.use('/historias', historiasRouter);
-app.use('/membros', membroRouter); // Nova rota
-app.use('/logingg', googleRouter); // Nova rota para autenticação
-
-// Monta as rotas de recompensas E a rota de resgate.
-// A rota raiz '/' dentro de rotaRecompensas.js será '/recompensas' aqui.
-// A rota '/resgatar/:id' dentro de rotaRecompensas.js será '/recompensas/resgatar/:id' aqui.
+app.use('/membros', membroRouter);
+app.use('/logingg', googleRouter);
 app.use('/recompensas', recompensaEProgramaRouter);
-
-// Monta a rota de progresso.
-// A rota '/progresso' dentro de rotaRecompensas.js será '/programa/progresso' aqui.
-app.use('/programa', recompensaEProgramaRouter);
-
+app.use('/programa', recompensaEProgramaRouter); // Esta linha deve permanecer se rotaRecompensas.js também contém rotas para '/programa'
 app.use('/eventos', rotasEventos);
-
-// REMOVA ESTA LINHA:
-// app.use('/programa', rotasPrograma);
-
+app.use('/conteudos', conteudosRouter); // Montagem do router de conteúdos
 
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {

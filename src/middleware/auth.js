@@ -63,31 +63,51 @@ export const verificarAdmin = (req, res, next) => {
  */
 export const verificarMembroAtivo = async (req, res, next) => {
   try {
+    // Logs detalhados para debug
+    console.log('=== VERIFICANDO MEMBRO ATIVO ===');
+    console.log('Dados do usuário:', req.usuario);
+    console.log('Usuarioid:', req.usuario?.usuarioid);
+    
     // Verifica se o usuárioid está disponível na requisição (populado por verificarAutenticacao)
     if (!req.usuario || !req.usuario.usuarioid) {
+      console.log('Erro: Dados de usuário ausentes');
       return res.status(401).json({ message: "Dados de usuário ausentes. Autenticação necessária." });
     }
 
     // Consulta ao banco de dados para obter o status de membro mais atualizado
-    const membro = await prisma.membro.findUnique({
-      where: { usuarioid: req.usuario.usuarioid }, // Prisma usa camelCase por padrão para relacionamentos
+    console.log('Consultando banco de dados para usuarioid:', req.usuario.usuarioid);
+    const usuario = await prisma.usuario.findUnique({
+      where: { usuarioid: req.usuario.usuarioid },
+      select: {
+        ehMembro: true,
+        membroAtivo: true,
+        dataExpiracao: true,
+      }
     });
 
-    if (!membro) {
+    console.log('Dados do usuário encontrados:', usuario);
+
+    if (!usuario || !usuario.ehMembro) {
+      console.log('Erro: Usuário não é membro ativo no banco de dados');
       return res.status(403).json({ message: "Acesso negado. Você não possui uma conta de membro ativa." });
     }
 
     // Verifica se o membro está ativo e se a data de expiração não passou
-    const ativo = membro.ativo && (!membro.dataExpiracao || new Date(membro.dataExpiracao) > new Date());
+    const ativo = usuario.membroAtivo && (!usuario.dataExpiracao || new Date(usuario.dataExpiracao) > new Date());
+    console.log('Status de ativo:', ativo);
+    console.log('Data de expiração:', usuario.dataExpiracao);
+    console.log('Data atual:', new Date());
 
     if (!ativo) {
+      console.log('Erro: Membro não está ativo ou expirou');
       return res.status(403).json({ message: "Seu status de membro não está ativo ou expirou." });
     }
 
-    // Opcional: Atualiza o req.usuario com os dados de membro mais recentes, se necessário para rotas subsequentes
+    // Opcional: Atualiza o req.usuario com os dados de membro mais recentes
     req.usuario.ehMembro = true;
     req.usuario.membroAtivo = true;
 
+    console.log('Verificação concluída com sucesso - Membro ativo');
     next();
   } catch (error) {
     console.error("Erro ao verificar membro ativo no middleware:", error);

@@ -134,8 +134,14 @@ router.get("/overclub", verificarAutenticacao, verificarMembroAtivo, (req, res) 
  */
 router.post("/ativar-membro", verificarAutenticacao, async (req, res) => {
   try {
+    console.log('=== ATIVANDO MEMBRO ===');
+    console.log('Dados do usuário:', req.usuario);
+    
     const usuarioId = req.usuario.usuarioid;
     const nomeUsuario = req.usuario.nome; // Pega o nome do usuário do token atual
+
+    console.log('Usuarioid:', usuarioId);
+    console.log('Nome do usuário:', nomeUsuario);
 
     // Usa upsert para criar ou atualizar o registro de membro, garantindo que o membro exista e esteja ativo
     const membro = await prisma.membro.upsert({
@@ -149,8 +155,13 @@ router.post("/ativar-membro", verificarAutenticacao, async (req, res) => {
       },
     });
 
+    console.log('Membro criado/atualizado:', membro);
+
     // Gera e retorna um NOVO TOKEN com os dados atualizados do usuário (incluindo status de membro)
     const { token: novoToken, usuario: usuarioAtualizado } = await usuario.gerarNovoTokenComDadosAtualizados(usuarioId);
+
+    console.log('Novo token gerado:', !!novoToken);
+    console.log('Usuário atualizado:', usuarioAtualizado);
 
     res.status(200).json({
       mensagem: "Membro ativado com sucesso! Seu status foi atualizado.",
