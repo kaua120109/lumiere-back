@@ -16,7 +16,8 @@ import googleRouter from './GoogleLogin/rotasGoogle.js';
 import recompensaEProgramaRouter from './RecompensasMembro/rotaRecompensas.js'; 
 import rotasEventos from './Eventos/rotasEventos.js'
 import conteudosRouter from './ConteudosMembro/rotasConteudos.js'; // Caminho de importação correto
-
+import imagensRoutes from './imagens/imagens.routes.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 import './bigintExtension.js';
 
@@ -75,6 +76,8 @@ app.use('/recompensas', recompensaEProgramaRouter);
 app.use('/programa', recompensaEProgramaRouter); // Esta linha deve permanecer se rotaRecompensas.js também contém rotas para '/programa'
 app.use('/eventos', rotasEventos);
 app.use('/conteudos', conteudosRouter); // Montagem do router de conteúdos
+app.use('/imagens', imagensRoutes);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 9090;
 app.listen(PORT, () => {

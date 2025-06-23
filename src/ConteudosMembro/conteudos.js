@@ -140,6 +140,8 @@ export class ConteudoService {
       throw new Error('ID do conteúdo inválido.');
     }
     try {
+      // Com onDelete: Cascade, não é mais necessário deletar manualmente as interações:
+      // await prisma.ConteudoUsuario.deleteMany({ where: { conteudoid: id } });
       await prisma.conteudo.delete({ where: { conteudoid: id } });
     } catch (error) {
       console.error("Erro ao deletar conteúdo:", error);

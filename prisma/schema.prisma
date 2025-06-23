@@ -195,7 +195,7 @@ model ConteudoUsuario {
   assignadoEm DateTime @default(now())
 
   usuario  usuario  @relation(fields: [usuarioid], references: [usuarioid])
-  conteudo conteudo @relation(fields: [conteudoid], references: [conteudoid])
+  conteudo conteudo @relation(fields: [conteudoid], references: [conteudoid], onDelete: Cascade)
 
   @@id([usuarioid, conteudoid]) // Chave primária composta para garantir unicidade da interação
 }
@@ -241,4 +241,12 @@ model ofertaUsuario {
   data        DateTime @default(now())
 
   @@unique([usuarioid, ofertaid])
+}
+
+model Imagem {
+  id              String   @id @default(uuid())
+  nome_arquivo    String
+  conteudo_base64 String   @db.Text
+  mime_type       String
+  criado_em       DateTime @default(now())
 }
