@@ -46,6 +46,8 @@
     "nodemailer": "^6.10.0",
     "pg": "^8.13.1",
     "quasar": "^2.18.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^10.0.0",
     "vue3-google-login": "^2.0.33",
     "winston": "^3.17.0",

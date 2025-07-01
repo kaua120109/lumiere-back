@@ -117,13 +117,10 @@ export const usuario = {
     try {
       const { identificador, senha: entradaSenha } = credenciais;
 
-      // Buscar o usuário pelo nome de usuário OU email e incluir dados de membro
+      // Buscar o usuário pelo nome de usuário OU email
       const usuarioEncontrado = await prisma.usuario.findFirst({
         where: {
           OR: [{ usuario: identificador }, { email: identificador }],
-        },
-        include: {
-          membro: true, // Incluir dados de membro para verificar status
         },
       });
 
@@ -139,10 +136,8 @@ export const usuario = {
       }
 
       // Determinar status de membro e se está ativo
-      const ehMembro = !!usuarioEncontrado.membro;
-      const membroEhAtivo = ehMembro
-        ? usuarioEncontrado.membro.ativo && (!usuarioEncontrado.membro.dataExpiracao || new Date(usuarioEncontrado.membro.dataExpiracao) > new Date())
-        : false;
+      const ehMembro = usuarioEncontrado.ehMembro;
+      const membroEhAtivo = usuarioEncontrado.membroAtivo;
 
       // Payload do token JWT, incluindo dados de membro
       const payloadToken = {
@@ -202,6 +197,10 @@ export const usuario = {
           pontos: true,
           nivelMembro: true,
           email: true,
+          ehMembro: true,
+          membroAtivo: true,
+          dataInicioMembro: true,
+          dataExpiracao: true,
         },
       });
 
@@ -210,10 +209,8 @@ export const usuario = {
       }
 
       // Determinar status de membro e se está ativo
-      const ehMembro = !!perfilUsuario.membro;
-      const membroEhAtivo = ehMembro
-        ? perfilUsuario.membro.ativo && (!perfilUsuario.membro.dataExpiracao || new Date(perfilUsuario.membro.dataExpiracao) > new Date())
-        : false;
+      const ehMembro = perfilUsuario.ehMembro;
+      const membroEhAtivo = perfilUsuario.membroAtivo;
 
       // Retornar o perfil com os campos ehMembro e membroAtivo
       return { ...perfilUsuario, ehMembro, membroAtivo: membroEhAtivo };
@@ -260,19 +257,6 @@ export const usuario = {
       
       const usuarioAtualizado = await prisma.usuario.findUnique({
         where: { usuarioid: usuarioId },
-        include: {
-          membro: true, // Incluir dados de membro
-        },
-        select: {
-          usuarioid: true,
-          usuario: true,
-          nome: true,
-          admin: true,
-          pontos: true,
-          nivelMembro: true,
-          email: true,
-          membro: true, // Selecionar também o relacionamento de membro
-        }
       });
 
       console.log('Usuário encontrado:', usuarioAtualizado);
@@ -282,12 +266,8 @@ export const usuario = {
       }
 
       // Determinar status de membro atualizado
-      const ehMembro = !!usuarioAtualizado.membro;
-      const membroEhAtivo = ehMembro
-        ? usuarioAtualizado.membro.ativo && (!usuarioAtualizado.membro.dataExpiracao || new Date(usuarioAtualizado.membro.dataExpiracao) > new Date())
-        : false;
-
-      console.log('Status de membro:', { ehMembro, membroEhAtivo });
+      const ehMembro = usuarioAtualizado.ehMembro;
+      const membroEhAtivo = usuarioAtualizado.membroAtivo;
 
       // Payload do token JWT com dados atualizados
       const payloadToken = {
